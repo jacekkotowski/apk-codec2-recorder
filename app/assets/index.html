@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Codec2 Recorder</title>
+<style>
+/* Layout: the recorder deck stays on top; the tape shelf of recordings scrolls under it. */
+:root{--bg:#1b2430;--panel:#253141;--line:#3a4a5e;--fg:#edf1f5;--dim:#a2b0c0;--rec:#e5484d;--play:#7cc8a4;--amber:#f0b45a;
+--mono:ui-monospace,"Roboto Mono","Droid Sans Mono",monospace;--ui:"Roboto Condensed","sans-serif-condensed",Roboto,sans-serif;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:16px/1.35 var(--ui);overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;max-width:720px;margin:auto}
+#deck{flex:none;max-height:72%;overflow-y:auto;padding:14px 16px 12px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+#clock{font:600 44px/1 var(--mono);font-variant-numeric:tabular-nums;text-align:center}
+#size{text-align:center;color:var(--dim);font:13px var(--mono);min-height:18px}
+.meter{height:8px;background:var(--bg);border-radius:2px;overflow:hidden}.meter i{display:block;height:100%;width:0;background:var(--play)}
+#ctl{display:flex;align-items:center;justify-content:center;gap:18px}
+button{font:inherit;font-weight:600;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;min-height:44px;padding:0 12px}
+button:active{background:var(--line)}button:focus-visible,select:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+#recb{width:84px;height:84px;border-radius:50%;background:var(--rec);border:5px solid var(--fg);color:#fff;font-size:15px;font-weight:800;padding:0}
+#recb.on{border-radius:14px;width:76px;height:76px;margin:4px}
+#pause{width:92px}
+label{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:14px}
+select{flex:1;min-width:0;min-height:44px;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 6px}
+#opts{display:flex;gap:16px;flex-wrap:wrap}.sw{min-height:40px;color:var(--fg);font-size:15px}.sw input{width:22px;height:22px;accent-color:var(--play)}
+#noise{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#noise button{min-height:40px}
+#lvlrow{display:flex;gap:10px;align-items:center}#rllab{flex:1;min-width:0}#rl{flex:1;min-width:0;width:auto}#rlv{min-width:52px;text-align:right}
+#deck>*{flex:none}
+#advp{display:flex;flex-direction:column;gap:6px}#advp label{font-size:13px}
+#vadrow{display:flex;flex-direction:column;gap:4px}#vadrow label{font-size:14px}
+.vm{position:relative;height:10px;background:var(--bg);border-radius:2px;overflow:hidden}.vm i{display:block;height:100%;width:0;background:var(--amber)}.vm b{position:absolute;top:0;bottom:0;width:2px;background:var(--fg);left:0}
+#msg{padding:8px 16px;color:var(--amber);font-size:14px;overflow-wrap:anywhere}#msg:empty{display:none}
+#bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 4px;color:var(--dim);font-size:14px}
+#bar button{min-height:38px;padding:0 8px;font-size:13px}#cbar{display:flex;align-items:center;gap:8px;padding:4px 16px}#cbar .meter{flex:1}#cbar button{min-height:36px}
+#list{flex:1;overflow-y:auto;padding:4px 16px calc(14px);display:flex;flex-direction:column;gap:8px}
+.r{border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:6px}
+.n{overflow-wrap:anywhere;font-weight:600}.m{color:var(--dim);font:13px var(--mono);font-variant-numeric:tabular-nums}
+.a{display:flex;gap:6px;flex-wrap:wrap}.a button{flex:1 1 auto;min-height:40px;padding:0 8px;font-size:14px}
+.pl{background:var(--play);color:#10201a;border-color:var(--play)}
+input[type=range]{width:100%;accent-color:var(--play);height:28px}
+input[type=text]{flex:1;min-width:0;min-height:40px;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 8px}
+.danger{color:var(--rec)}
+#empty{color:var(--dim);padding:14px 0}
+[hidden]{display:none!important}
+</style></head><body>
+<div id="app">
+  <div id="deck">
+    <div id="clock">00:00</div>
+    <div id="size"></div>
+    <div class="m">Recording level. Yellow is full, red means the mic is overloading.</div><div class="meter"><i id="lvl"></i></div>
+    <div id="ctl"><button id="pause" hidden>PAUSE</button><button id="recb" aria-label="Record">REC</button></div>
+    <label for="mode">Compression<select id="mode"></select></label>
+    <label for="mic">Microphone<select id="mic"></select></label>
+    <label for="src">Audio source<select id="src"><option value="6">Voice recognition (recommended)</option><option value="1">Microphone (louder, may overload)</option><option value="5">Camcorder (often rear mic)</option><option value="9">Unprocessed</option></select></label>
+    <div id="lvlrow"><label class="sw"><input type="checkbox" id="auto"> Auto level</label><label for="rl" id="rllab">Rec level <input id="rl" type="range" min="-12" max="36" step="1" value="12"><span id="rlv" class="m"></span></label></div>
+    <div id="opts"><label class="sw"><input type="checkbox" id="dn"> Denoise</label><label class="sw"><input type="checkbox" id="va"> Voice activation</label></div>
+    <div id="vadrow" hidden><label for="sens">Voice sensitivity <input id="sens" type="range" min="1" max="10" value="5"></label><label for="hold">Hold after speech<select id="hold"><option value="0.5">0.5 s</option><option value="1">1 s</option><option value="2">2 s</option><option value="3">3 s</option></select></label><div class="vm"><i id="vm"></i><b id="vt"></b></div></div>
+    <div id="noise"><button id="samp">SAMPLE NOISE</button><button id="nclr" hidden>CLEAR</button><span id="nst" class="m"></span><button id="adv">AUDIO</button></div>
+    <div id="advp" hidden><label for="st">Denoise strength<select id="st"><option value="0.3">Gentle (keeps consonants best)</option><option value="0.18">Medium</option><option value="0.1">Strong (quietest pauses)</option></select></label><label for="rm">Rumble cut<select id="rm"><option value="120">Light (120 Hz)</option><option value="180">Medium (180 Hz)</option><option value="300">Strong (300 Hz)</option></select></label><label for="cp">Compressor<select id="cp"><option value="1">Off</option><option value="2">Light (2:1)</option><option value="3">Medium (3:1)</option><option value="5">Strong (5:1)</option></select></label><label for="ng">Noise gate<select id="ng"><option value="0">Off</option><option value="6">Light (-6 dB in pauses)</option><option value="12">Medium (-12 dB)</option><option value="24">Strong (-24 dB)</option></select></label><label for="cl">Consonant lift<select id="cl"><option value="0">Off</option><option value="4">Light (up to +4 dB)</option><option value="6">Medium (up to +6 dB)</option><option value="10">Strong (up to +10 dB)</option></select></label><label for="tb">Treble boost<select id="tb"><option value="0">Off</option><option value="1">Light (+6 dB)</option><option value="2">Strong (+10 dB)</option></select></label></div>
+  </div>
+  <div id="msg" role="status"></div>
+  <div id="bar"><span id="count"></span><span class="btns"><button id="cmp">COMPRESS AUDIO</button> <button id="imp">OPEN .C2</button></span></div>
+  <div id="cbar" hidden><div class="meter"><i id="cpi"></i></div><span id="cpt" class="m"></span><button id="ccan">CANCEL</button></div>
+  <div id="list"></div>
+</div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const MODES = [["450",4.5,"smallest, experimental"],["700C",6,"best balance"],["1200",9,""],["1300",10.5,""],["1400",10.5,""],["1600",12,""],["2400",18,""],["3200",24,"best quality"]];
+for (const [n, k, d] of MODES) {
+  const o = document.createElement("option"); o.value = n;
+  o.textContent = n + ", " + k + " kB/min" + (d ? ", " + d : ""); $("mode").appendChild(o);
+}
+let mode = "700C"; try { mode = localStorage.getItem("mode") || mode; } catch (e) {}
+$("mode").value = mode;
+$("mode").addEventListener("change", e => { mode = e.target.value; try { localStorage.setItem("mode", mode); } catch (x) {} });
+const A = window.Android;
+const say = t => { $("msg").textContent = t || ""; };
+const fmt = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, z = v => String(v).padStart(2, "0"); return (h ? h + ":" + z(m) : z(m)) + ":" + z(s % 60); };
+const kb = b => b < 102400 ? (b / 1024).toFixed(1) + " kB" : (b / 1048576).toFixed(2) + " MB";
+const opt = (id, key, dflt) => { const el = $(id); let v = dflt; try { const s = localStorage.getItem(key); if (s !== null) v = s === "1"; } catch (e) {} el.checked = v; el.addEventListener("change", () => { try { localStorage.setItem(key, el.checked ? "1" : "0"); } catch (e) {} }); };
+opt("dn", "dn", true); opt("va", "va", false);
+const sel = (id, key) => { const el = $(id); try { const s = localStorage.getItem(key); if (s !== null) el.value = s; } catch (e) {} el.addEventListener("change", () => { try { localStorage.setItem(key, el.value); } catch (e) {} sendCfg(); }); };
+function sendCfg() {
+  A.audioConfig(+$("src").value, +$("mic").value, +$("tb").value, +$("st").value, +$("rm").value, +$("cl").value, +$("ng").value, +$("cp").value); A.sensitivity(+$("sens").value); A.hold(+$("hold").value);
+  A.recLevel($("auto").checked ? -100 : +$("rl").value);
+  $("rl").disabled = $("auto").checked; $("rlv").textContent = $("auto").checked ? "auto" : (+$("rl").value > 0 ? "+" : "") + $("rl").value + " dB";
+  $("vt").style.left = (20 - 1.8 * +$("sens").value) / 24 * 100 + "%";
+}
+function fillMics() {
+  const el = $("mic"); let want = el.value || "0"; try { want = localStorage.getItem("mic") || want; } catch (e) {}
+  el.textContent = ""; const d = document.createElement("option"); d.value = "0"; d.textContent = "Automatic"; el.append(d);
+  if (A) for (const m of JSON.parse(A.microphones())) { const o = document.createElement("option"); o.value = m.id; o.textContent = m.name; el.append(o); }
+  el.value = want; if (el.value !== want) el.value = "0";
+}
+fillMics();
+$("tb").value = "1"; $("st").value = "0.18"; $("rm").value = "180"; $("cl").value = "6"; $("ng").value = "12"; $("cp").value = "3";
+$("hold").value = "1"; sel("mic", "mic"); sel("src", "src2"); sel("hold", "hold"); sel("rl", "rl"); sel("tb", "tb"); sel("st", "st"); sel("rm", "rm"); sel("cl", "cl"); sel("ng", "ng"); sel("cp", "cp"); sel("sens", "sens");
+$("sens").addEventListener("input", sendCfg); $("rl").addEventListener("input", sendCfg);
+opt("auto", "auto", true); $("auto").addEventListener("change", sendCfg);
+$("adv").addEventListener("click", () => { $("advp").hidden = !$("advp").hidden; });
+$("va").addEventListener("change", () => { $("vadrow").hidden = !$("va").checked; });
+$("vadrow").hidden = !$("va").checked;
+if (A) sendCfg();
+let open = null, confirmDel = null, renaming = null, items = [], was = { rec: false, play: null }, paused = false;
+
+function row(r, st) {
+  const d = document.createElement("div"); d.className = "r";
+  const n = document.createElement("div"); n.className = "n"; n.textContent = r.name.replace(/\.c2$/, "");
+  const m = document.createElement("div"); m.className = "m"; m.textContent = r.mode + " · " + fmt(r.secs) + " · " + kb(r.bytes);
+  d.append(n, m);
+  const a = document.createElement("div"); a.className = "a";
+  const btn = (t, f, c) => { const b = document.createElement("button"); b.textContent = t; if (c) b.className = c; b.addEventListener("click", f); return b; };
+  const playing = st.play === r.name;
+  a.append(btn(playing ? "STOP" : "PLAY", () => { playing ? A.stopPlay() : A.play(r.name); }, "pl"));
+  a.append(btn("MORE", () => { open = open === r.name ? null : r.name; confirmDel = null; renaming = null; render(); }));
+  d.append(a);
+  if (playing) {
+    const s = document.createElement("input"); s.type = "range"; s.min = 0; s.max = 1000; s.id = "seek"; s.setAttribute("aria-label", "Position");
+    s.value = st.dur ? st.pos / st.dur * 1000 : 0;
+    s.addEventListener("change", () => A.seek(s.value / 1000));
+    const t = document.createElement("div"); t.className = "m"; t.id = "pt"; t.textContent = fmt(st.pos) + " / " + fmt(st.dur);
+    d.append(s, t);
+  }
+  if (open === r.name) {
+    const x = document.createElement("div"); x.className = "a";
+    x.append(btn("SHARE", () => A.share(r.name)), btn("SAVE .C2", () => A.saveC2(r.name)), btn("SAVE WAV", () => A.saveWav(r.name)), btn("RENAME", () => { renaming = r.name; render(); }), btn("DELETE", () => { confirmDel = r.name; render(); }, "danger"));
+    d.append(x);
+    if (renaming === r.name) {
+      const y = document.createElement("div"); y.className = "a";
+      const i = document.createElement("input"); i.type = "text"; i.id = "newname"; i.setAttribute("aria-label", "New name"); i.value = r.name.replace(/\.c2$/, "");
+      y.append(i, btn("SAVE", () => { if (A.rename(r.name, i.value)) { renaming = null; open = null; refresh(); } else say("That name can't be used."); }));
+      d.append(y);
+    }
+    if (confirmDel === r.name) {
+      const y = document.createElement("div"); y.className = "a";
+      y.append(btn("YES, DELETE FOREVER", () => { A.remove(r.name); confirmDel = null; open = null; refresh(); }, "danger"), btn("CANCEL", () => { confirmDel = null; render(); }));
+      d.append(y);
+    }
+  }
+  return d;
+}
+let last = { play: null, pos: 0, dur: 0 };
+function render() {
+  const l = $("list"); l.textContent = "";
+  $("count").textContent = "Recordings: " + items.length;
+  if (!items.length) { const e = document.createElement("div"); e.id = "empty"; e.textContent = "Your recordings appear here. Press REC to start."; l.append(e); }
+  for (const r of items) l.append(row(r, last));
+}
+function refresh() { items = JSON.parse(A.list()); render(); }
+function tick() {
+  const s = JSON.parse(A.status());
+  $("cbar").hidden = s.comp < 0; if (s.comp >= 0) { $("cpi").style.width = s.comp * 100 + "%"; $("cpt").textContent = Math.round(s.comp * 100) + "%"; }
+  if (s.msg) { say(s.msg); refresh(); }
+  $("clock").textContent = fmt(s.secs && s.rec ? s.secs : 0);
+  $("clock").style.color = s.rec ? "var(--rec)" : "var(--fg)";
+  $("size").textContent = s.rec ? (s.paused ? "PAUSED · " : s.waiting ? "WAITING FOR VOICE · " : "") + kb(s.bytes) + " · gain " + (20 * Math.log10(Math.max(s.gain, 0.01))).toFixed(0) + " dB" + (s.routed ? " · " + s.routed : "") : "";
+  $("lvl").style.width = (s.rec ? Math.round(s.level * 100) : 0) + "%"; $("lvl").style.background = s.clip ? "var(--rec)" : s.level > 0.85 ? "var(--amber)" : "var(--play)";
+  const b = $("recb"); b.textContent = s.rec ? "STOP" : "REC"; b.classList.toggle("on", s.rec);
+  $("pause").hidden = !s.rec; $("pause").textContent = s.paused ? "RESUME" : "PAUSE"; paused = s.paused;
+  $("samp").disabled = s.sampling; $("samp").textContent = s.sampling ? "SAMPLING…" : "SAMPLE NOISE"; $("nclr").hidden = !s.hasNoise || s.sampling;
+  $("nst").textContent = s.sampling ? "Stay silent for 2 s" : s.hasNoise ? "Sample saved, adapting" : "Auto, adapting";
+  $("vm").style.width = (s.rec ? Math.round(s.vad * 100) : 0) + "%"; for (const id of ["mic","src","tb","st","rm","cl","ng","cp"]) $(id).disabled = s.rec;
+  $("mode").disabled = s.rec; $("dn").disabled = s.rec; $("va").disabled = s.rec;
+  if (was.rec !== s.rec || was.play !== s.play) { last = s; refresh(); }
+  was = s; last = s;
+  const sk = $("seek");
+  if (sk && !sk.matches(":active") && s.dur) sk.value = s.pos / s.dur * 1000;
+  const pt = $("pt"); if (pt) pt.textContent = fmt(s.pos) + " / " + fmt(s.dur);
+}
+$("recb").addEventListener("click", () => { say(""); if (was.rec) A.stopRec(); else A.startRec(mode, $("dn").checked, $("va").checked); });
+$("samp").addEventListener("click", () => { say(""); A.sampleNoise(); });
+$("nclr").addEventListener("click", () => A.clearNoise());
+$("pause").addEventListener("click", () => A.pauseRec(!paused));
+$("cmp").addEventListener("click", () => { say(""); A.compressFile(mode, $("dn").checked, $("va").checked); });
+$("ccan").addEventListener("click", () => A.cancelCompress());
+$("imp").addEventListener("click", () => { say(""); A.importFile(); });
+if (A) { refresh(); setInterval(tick, 200); tick(); } else say("Open this inside the app.");
+document.addEventListener("visibilitychange", () => { if (!document.hidden && A) { refresh(); fillMics(); sendCfg(); } });
+$("mic").addEventListener("pointerdown", () => { if (A && !was.rec) fillMics(); });
+</script></body></html>

@@ -1,0 +1,5 @@
+package pl.dyktafon;
+import java.nio.*;import java.nio.file.*;import java.util.*;
+public class W{public static void main(String[] a)throws Exception{byte[] b=Files.readAllBytes(Paths.get(a[0]));int n=b.length/2;ByteBuffer B=ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN);double[] s=new double[n];double pk=1;for(int i=0;i<n;i++){s[i]=B.getShort();pk=Math.max(pk,Math.abs(s[i]));}Random R=new Random(5);
+ for(double inPk:new double[]{100,300,1000,4000,16000}){VoiceChain c=new VoiceChain(320,true,.18,1,null,180,6,12,3);short[] p=new short[320];double first=0,last=0,lastRms=0;int F=0;int T=n*3;double sum=0;long cnt=0;for(int i=0;i+320<=T;i+=320){for(int j=0;j<320;j++)p[j]=(short)Math.round(s[(i+j)%n]/pk*inPk+inPk/30*R.nextGaussian());c.process(p,-100,5,1);double m=0;for(short q:p){m=Math.max(m,Math.abs(q));if(i>n){sum+=q*q;cnt++;}}if(i<n/3)first=Math.max(first,m);if(i>2*n)last=Math.max(last,m);}
+ System.out.printf("mic peak %5.0f: first seconds peak %5.0f, settled peak %5.0f, settled rms %5.0f, gain %4.1f dB, meter %.2f%n",inPk,first,last,Math.sqrt(sum/cnt),20*Math.log10(c.currentGain),c.level);}}}

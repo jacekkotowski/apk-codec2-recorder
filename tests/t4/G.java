@@ -1,0 +1,5 @@
+package pl.dyktafon;
+import java.nio.*;import java.nio.file.*;import java.util.*;
+public class G{public static void main(String[] a)throws Exception{byte[] b=Files.readAllBytes(Paths.get(a[0]));int n=b.length/2;ByteBuffer B=ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN);double[] s=new double[n];for(int i=0;i<n;i++)s[i]=B.getShort()*.3;Random R=new Random(3);int pad=32000;short[] in=new short[n+2*pad];for(int i=0;i<in.length;i++){double v=(i>=pad&&i<pad+n?s[i-pad]:0)+80*R.nextGaussian();in[i]=(short)v;}
+ for(double gate:new double[]{0,6,12,24}){VoiceChain c=new VoiceChain(320,true,.18,1,null,180,6,gate);c.process(new short[320],-100,5,1);short[] p=new short[320];double[] o=new double[in.length];for(int i=0;i+320<=in.length;i+=320){System.arraycopy(in,i,p,0,320);c.process(p,0,5,1);for(int j=0;j<320;j++)o[i+j]=p[j];}
+  double pz=0,sp=0;for(int i=16000;i<pad-2000;i++)pz+=o[i]*o[i];pz/=pad-18000;for(int i=pad+1000;i<pad+n;i++)sp+=o[i]*o[i];sp/=n-1000;System.out.printf("gate %2.0f dB: speech rms %6.0f, pause rms %6.1f, speech to pause %5.1f dB%n",gate,Math.sqrt(sp),Math.sqrt(pz),10*Math.log10(sp/pz));}}}
