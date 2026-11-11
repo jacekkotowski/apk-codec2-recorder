@@ -14,3 +14,13 @@ Rules:
 - Never commit `*.keystore` or `signing.env`.
 - Don't hand over a build unless it was built and tested from the current source. State plainly what was not tested on a phone.
 - Raise `versionCode` and the version name with each delivered build.
+
+## Heart Sounds (`heart/`)
+
+Second app, package `pl.heartsounds`, same hand build without the NDK: `bash heart/build.sh`, signing from the root `signing.env`. Records raw 48 kHz WAV from the phone mic on the chest; band-pass, noise reduction and graph are applied for display, playback and export only. Status in `heart/PLAN.md`.
+
+- It copies the layout and Limiter from Codec2 Recorder but shares no files. Changes in `heart/` must not touch `app/`.
+- The voice-app settings above do not apply to it: it uses UNPROCESSED, no auto level, no gate.
+- Run `bash heart/tests/run.sh` and `node heart/tests/ui.js` before handing over a build.
+- Never show anything as an ECG, a diagnosis, or a heart rate that was not measured.
+

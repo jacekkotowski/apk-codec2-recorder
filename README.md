@@ -4,6 +4,8 @@ Offline Android dictaphone that stores speech with Codec 2, from 3200 down to 45
 
 Current version: 2.4. Roadmap in [PLAN.md](PLAN.md).
 
+A second app, Heart Sounds, lives in [heart/](heart/README.md).
+
 ## Build
 
 Needs: Android SDK with build-tools 36.0.0 and platforms;android-36, JDK 17 or newer, Python 3, zip, and NDK r28c in `$ANDROID_SDK_ROOT/android-ndk-r28c` or `ANDROID_NDK_ROOT`. Tested on Linux only.
