@@ -23,7 +23,7 @@ final class FrvWriter implements Closeable {
     static final String[] CODEC_NAME = {"H.264", "HEVC", "AV1"};
 
     private final OutputStream out;
-    long bytes, videoBytes, audioBytes;
+    volatile long bytes, videoBytes, audioBytes; // read by the status line from another thread
     private long lastFlush = System.currentTimeMillis();
 
     FrvWriter(File f, int codec, int width, int height, int c2mode) throws IOException {
