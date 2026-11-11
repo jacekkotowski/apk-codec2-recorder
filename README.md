@@ -4,7 +4,7 @@ Offline Android dictaphone that stores speech with Codec 2, from 3200 down to 45
 
 Current version: 2.4. Roadmap in [PLAN.md](PLAN.md).
 
-A second app, Heart Sounds, lives in [heart/](heart/README.md).
+The Heart Sounds app that started here now has its own repository, `apk-heart-sounds`.
 
 ## Build
 
