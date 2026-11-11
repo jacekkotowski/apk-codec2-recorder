@@ -22,5 +22,5 @@ Second app, package `pl.heartsounds`, same hand build without the NDK: `bash hea
 - It copies the layout and Limiter from Codec2 Recorder but shares no files. Changes in `heart/` must not touch `app/`.
 - The voice-app settings above do not apply to it: it uses UNPROCESSED, no auto level, no gate.
 - Run `bash heart/tests/run.sh` and `node heart/tests/ui.js` before handing over a build.
-- Never show anything as an ECG, a diagnosis, or a heart rate that was not measured.
+- Never show anything as an ECG, a diagnosis, a named disease, or a heart rate that was not measured. The murmur-like-sound flag is an acoustic flag with its caveat; its limit (`Screen.SYS_DB`) was chosen on CirCor data, so re-run the evaluation in `heart/docs/validation.md` before changing it or `Analysis.java`.
 
