@@ -44,6 +44,7 @@ select:disabled{opacity:.5}
   </div>
   <div id="enc"></div>
   <div id="msg" role="status"></div>
+  <div id="more"><button id="tog" aria-expanded="true">Hide settings</button><button id="pal">Pick colours again</button></div>
   <div id="set">
    <label>Pictures per second<select id="fps"><option value="0.5">0.5</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option></select></label>
    <label>Picture size<select id="size"><option value="0">160 x 120</option><option value="1">240 x 176</option><option value="2">320 x 240</option><option value="3">480 x 360</option></select></label>
@@ -54,7 +55,6 @@ select:disabled{opacity:.5}
    <label>Voice (Codec 2 bit/s)<select id="voice"></select></label>
    <label>Camera<select id="front"><option value="0">Back</option><option value="1">Front</option></select></label>
   </div>
-  <div id="more"><button id="pal">Pick colours again</button></div>
  </div>
  <div id="shelf"><div id="list"></div><div id="empty">No recordings yet.</div></div>
 </div>
@@ -81,6 +81,10 @@ function say(t){ $('msg').textContent = t; msgUntil = Date.now() + 8000 }
 
 $('recb').onclick = function(){ if (rec) A.stopRec(); else { push(); A.startRec() } };
 $('pal').onclick = function(){ A.newPalette() };
+function fold(hide){ $('set').style.display = hide ? 'none' : ''; $('tog').textContent = hide ? 'Settings' : 'Hide settings'; $('tog').setAttribute('aria-expanded', String(!hide)); try { localStorage.setItem('fold', hide ? '1' : '') } catch (e) {} }
+$('tog').onclick = function(){ fold($('set').style.display !== 'none') };
+var folded = false; try { folded = localStorage.getItem('fold') === '1' } catch (e) {}
+fold(folded);
 
 function tick(){
   var s; try { s = JSON.parse(A.status()) } catch (e) { return }
