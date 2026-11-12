@@ -16,3 +16,4 @@ tests/c2test
 *.log
 *.png
 __pycache__/
+tests/radio/out/

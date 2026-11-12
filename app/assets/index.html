@@ -9,7 +9,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:16px/1.35 var(--ui);overflow:hidden}
 #app{height:100%;display:flex;flex-direction:column;max-width:720px;margin:auto}
-#deck{flex:none;max-height:72%;overflow-y:auto;padding:14px 16px 12px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.deck{flex:none;max-height:72%;overflow-y:auto;padding:14px 16px 12px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
 #clock{font:600 44px/1 var(--mono);font-variant-numeric:tabular-nums;text-align:center}
 #size{text-align:center;color:var(--dim);font:13px var(--mono);min-height:18px}
 .meter{height:8px;background:var(--bg);border-radius:2px;overflow:hidden}.meter i{display:block;height:100%;width:0;background:var(--play)}
@@ -24,7 +24,12 @@ select{flex:1;min-width:0;min-height:44px;font:inherit;color:var(--fg);backgroun
 #opts{display:flex;gap:16px;flex-wrap:wrap}.sw{min-height:40px;color:var(--fg);font-size:15px}.sw input{width:22px;height:22px;accent-color:var(--play)}
 #noise{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#noise button{min-height:40px}
 #lvlrow{display:flex;gap:10px;align-items:center}#rllab{flex:1;min-width:0}#rl{flex:1;min-width:0;width:auto}#rlv{min-width:52px;text-align:right}
-#deck>*{flex:none}
+.deck>*{flex:none}
+#tabs{flex:none;display:flex;background:var(--panel)}#tabs button{flex:1;border:0;border-bottom:3px solid transparent;border-radius:0;background:none;color:var(--dim);min-height:46px}#tabs button.on{color:var(--fg);border-bottom-color:var(--amber)}
+.big{font:600 26px/1.1 var(--mono);text-align:center;min-height:30px}.ctl2{display:flex;gap:8px;flex-wrap:wrap}.ctl2 button{flex:1 1 auto}
+#setp{display:flex;flex-direction:column;gap:10px}
+#ptt{width:120px;height:120px;border-radius:50%;background:var(--bg);border:5px solid var(--fg);font-size:17px;font-weight:800;padding:0}#ptt.on{background:var(--rec);color:#fff}#ptt:disabled{opacity:.35}
+#lctl{display:flex;align-items:center;justify-content:center;gap:18px}
 #advp{display:flex;flex-direction:column;gap:6px}#advp label{font-size:13px}
 #vadrow{display:flex;flex-direction:column;gap:4px}#vadrow label{font-size:14px}
 .vm{position:relative;height:10px;background:var(--bg);border-radius:2px;overflow:hidden}.vm i{display:block;height:100%;width:0;background:var(--amber)}.vm b{position:absolute;top:0;bottom:0;width:2px;background:var(--fg);left:0}
@@ -43,19 +48,38 @@ input[type=text]{flex:1;min-width:0;min-height:40px;font:inherit;color:var(--fg)
 [hidden]{display:none!important}
 </style></head><body>
 <div id="app">
-  <div id="deck">
+  <div id="tabs"><button data-t="deck" class="on">RECORD</button><button data-t="live">LIVE</button><button data-t="files">FILES</button></div>
+  <div id="deck" class="deck">
     <div id="clock">00:00</div>
     <div id="size"></div>
     <div class="m">Recording level. Yellow is full, red means the mic is overloading.</div><div class="meter"><i id="lvl"></i></div>
     <div id="ctl"><button id="pause" hidden>PAUSE</button><button id="recb" aria-label="Record">REC</button></div>
     <label for="mode">Compression<select id="mode"></select></label>
+    <div id="opts"><label class="sw"><input type="checkbox" id="dn"> Denoise</label><label class="sw"><input type="checkbox" id="va"> Voice activation</label><button id="adv">SETTINGS</button></div>
+    <div id="vadrow" hidden><label for="sens">Voice sensitivity <input id="sens" type="range" min="1" max="10" value="5"></label><label for="hold">Hold after speech<select id="hold"><option value="0.5">0.5 s</option><option value="1">1 s</option><option value="2">2 s</option><option value="3">3 s</option></select></label><div class="vm"><i id="vm"></i><b id="vt"></b></div></div>
+    <div id="setp" hidden>
     <label for="mic">Microphone<select id="mic"></select></label>
     <label for="src">Audio source<select id="src"><option value="6">Voice recognition (recommended)</option><option value="1">Microphone (louder, may overload)</option><option value="5">Camcorder (often rear mic)</option><option value="9">Unprocessed</option></select></label>
     <div id="lvlrow"><label class="sw"><input type="checkbox" id="auto"> Auto level</label><label for="rl" id="rllab">Rec level <input id="rl" type="range" min="-12" max="36" step="1" value="12"><span id="rlv" class="m"></span></label></div>
-    <div id="opts"><label class="sw"><input type="checkbox" id="dn"> Denoise</label><label class="sw"><input type="checkbox" id="va"> Voice activation</label></div>
-    <div id="vadrow" hidden><label for="sens">Voice sensitivity <input id="sens" type="range" min="1" max="10" value="5"></label><label for="hold">Hold after speech<select id="hold"><option value="0.5">0.5 s</option><option value="1">1 s</option><option value="2">2 s</option><option value="3">3 s</option></select></label><div class="vm"><i id="vm"></i><b id="vt"></b></div></div>
-    <div id="noise"><button id="samp">SAMPLE NOISE</button><button id="nclr" hidden>CLEAR</button><span id="nst" class="m"></span><button id="adv">AUDIO</button></div>
-    <div id="advp" hidden><label for="st">Denoise strength<select id="st"><option value="0.3">Gentle (keeps consonants best)</option><option value="0.18">Medium</option><option value="0.1">Strong (quietest pauses)</option></select></label><label for="rm">Rumble cut<select id="rm"><option value="120">Light (120 Hz)</option><option value="180">Medium (180 Hz)</option><option value="300">Strong (300 Hz)</option></select></label><label for="cp">Compressor<select id="cp"><option value="1">Off</option><option value="2">Light (2:1)</option><option value="3">Medium (3:1)</option><option value="5">Strong (5:1)</option></select></label><label for="ng">Noise gate<select id="ng"><option value="0">Off</option><option value="6">Light (-6 dB in pauses)</option><option value="12">Medium (-12 dB)</option><option value="24">Strong (-24 dB)</option></select></label><label for="cl">Consonant lift<select id="cl"><option value="0">Off</option><option value="4">Light (up to +4 dB)</option><option value="6">Medium (up to +6 dB)</option><option value="10">Strong (up to +10 dB)</option></select></label><label for="tb">Treble boost<select id="tb"><option value="0">Off</option><option value="1">Light (+6 dB)</option><option value="2">Strong (+10 dB)</option></select></label></div>
+    <div id="noise"><button id="samp">SAMPLE NOISE</button><button id="nclr" hidden>CLEAR</button><span id="nst" class="m"></span></div>
+    <div id="advp"><label for="st">Denoise strength<select id="st"><option value="0.3">Gentle (keeps consonants best)</option><option value="0.18">Medium</option><option value="0.1">Strong (quietest pauses)</option></select></label><label for="rm">Rumble cut<select id="rm"><option value="120">Light (120 Hz)</option><option value="180">Medium (180 Hz)</option><option value="300">Strong (300 Hz)</option></select></label><label for="cp">Compressor<select id="cp"><option value="1">Off</option><option value="2">Light (2:1)</option><option value="3">Medium (3:1)</option><option value="5">Strong (5:1)</option></select></label><label for="ng">Noise gate<select id="ng"><option value="0">Off</option><option value="6">Light (-6 dB in pauses)</option><option value="12">Medium (-12 dB)</option><option value="24">Strong (-24 dB)</option></select></label><label for="cl">Consonant lift<select id="cl"><option value="0">Off</option><option value="4">Light (up to +4 dB)</option><option value="6">Medium (up to +6 dB)</option><option value="10">Strong (up to +10 dB)</option></select></label><label for="tb">Treble boost<select id="tb"><option value="0">Off</option><option value="1">Light (+6 dB)</option><option value="2">Strong (+10 dB)</option></select></label></div>
+    </div>
+  </div>
+  <div id="live" class="deck" hidden>
+    <div id="lst" class="big">OFF</div>
+    <div class="meter"><i id="lpi"></i></div><div id="lsig" class="m"></div>
+    <div id="lctl"><button id="lon">START</button><button id="ptt" disabled>TALK</button></div>
+    <label for="lmode">Mode<select id="lmode"><option value="10">FreeDV 700D (weakest signals)</option><option value="11">FreeDV 700E (fast fading)</option></select></label>
+    <label class="sw"><input type="checkbox" id="lec"> Cancel this phone's own sound while talking</label>
+    <div class="m">Tap TALK to transmit, tap again to listen. The phone's speaker goes to the radio's microphone, its microphone to the radio's speaker. Talking works best with a headset microphone, listening with earphones.</div>
+  </div>
+  <div id="files" class="deck" hidden>
+    <div id="fst" class="big">READY</div>
+    <div class="meter"><i id="fpi"></i></div><div id="fsig" class="m"></div>
+    <div class="ctl2"><button id="frx">RECEIVE</button><button id="ftone">TEST TONE</button><button id="fstop" class="danger" hidden>STOP</button></div>
+    <label for="rmode">Speed<select id="rmode"></select></label>
+    <label for="rex">Repair<select id="rex"><option value="25">+25% (few losses)</option><option value="50">+50%</option><option value="100">+100% (survives half lost)</option><option value="200">+200%</option><option value="-1">Repeat until stopped</option></select></label>
+    <div class="m">SEND is on each recording below. Hold the phone's speaker at the radio's microphone to send, its microphone at the radio's speaker to receive. Both sides need the same speed.</div>
   </div>
   <div id="msg" role="status"></div>
   <div id="bar"><span id="count"></span><span class="btns"><button id="cmp">COMPRESS AUDIO</button> <button id="imp">OPEN .C2</button></span></div>
@@ -97,7 +121,7 @@ $("tb").value = "1"; $("st").value = "0.18"; $("rm").value = "180"; $("cl").valu
 $("hold").value = "1"; sel("mic", "mic"); sel("src", "src2"); sel("hold", "hold"); sel("rl", "rl"); sel("tb", "tb"); sel("st", "st"); sel("rm", "rm"); sel("cl", "cl"); sel("ng", "ng"); sel("cp", "cp"); sel("sens", "sens");
 $("sens").addEventListener("input", sendCfg); $("rl").addEventListener("input", sendCfg);
 opt("auto", "auto", true); $("auto").addEventListener("change", sendCfg);
-$("adv").addEventListener("click", () => { $("advp").hidden = !$("advp").hidden; });
+$("adv").addEventListener("click", () => { $("setp").hidden = !$("setp").hidden; });
 $("va").addEventListener("change", () => { $("vadrow").hidden = !$("va").checked; });
 $("vadrow").hidden = !$("va").checked;
 if (A) sendCfg();
@@ -112,7 +136,8 @@ function row(r, st) {
   const btn = (t, f, c) => { const b = document.createElement("button"); b.textContent = t; if (c) b.className = c; b.addEventListener("click", f); return b; };
   const playing = st.play === r.name;
   a.append(btn(playing ? "STOP" : "PLAY", () => { playing ? A.stopPlay() : A.play(r.name); }, "pl"));
-  a.append(btn("MORE", () => { open = open === r.name ? null : r.name; confirmDel = null; renaming = null; render(); }));
+  if (tab === "files") a.append(btn("SEND " + fmt(est(r)), () => { say(""); A.radioSend(r.name, +$("rmode").value, Math.max(0, +$("rex").value), +$("rex").value < 0); }));
+  else a.append(btn("MORE", () => { open = open === r.name ? null : r.name; confirmDel = null; renaming = null; render(); }));
   d.append(a);
   if (playing) {
     const s = document.createElement("input"); s.type = "range"; s.min = 0; s.max = 1000; s.id = "seek"; s.setAttribute("aria-label", "Position");
@@ -139,6 +164,42 @@ function row(r, st) {
   }
   return d;
 }
+let tab = "deck";
+// Speeds: name, bytes per frame, seconds per burst of 4 frames (measured), note.
+const RM = [["Fast, 980 bit/s", 510, 17.17, "good signal"], ["Robust, 320 bit/s", 126, 13.2, "weak signal"], ["Very robust, 87 bit/s", 54, 21.12, "very weak signal"]];
+RM.forEach((m, i) => { const o = document.createElement("option"); o.value = i; o.textContent = m[0] + ", " + m[3]; $("rmode").append(o); });
+$("rmode").value = "1"; $("rex").value = "50"; sel("rmode", "rmode"); sel("rex", "rex"); sel("lmode", "lmode"); opt("lec", "lec", false);
+$("rmode").addEventListener("change", render); $("rex").addEventListener("change", render);
+function est(r) {
+  const m = RM[+$("rmode").value], x = Math.max(0, +$("rex").value), k = Math.ceil((9 + new TextEncoder().encode(r.name).length + r.bytes) / (m[1] - 6));
+  return 1 + Math.ceil((k + Math.ceil(k * x / 100)) / 4) * m[2];
+}
+for (const b of document.querySelectorAll("#tabs button")) b.addEventListener("click", () => {
+  tab = b.dataset.t; open = null; confirmDel = null; renaming = null;
+  for (const o of document.querySelectorAll("#tabs button")) o.classList.toggle("on", o === b);
+  for (const id of ["deck", "live", "files"]) $(id).hidden = id !== tab;
+  $("bar").hidden = tab === "live"; $("list").hidden = tab === "live"; for (const x of document.querySelectorAll("#bar .btns")) x.hidden = tab !== "deck";
+  render();
+});
+const sig = r => r.sync ? "Signal locked, SNR " + r.snr.toFixed(0) + " dB" : "No signal";
+function radioTick(r) {
+  const live = r.on && r.op === "live", busy = r.on && !live;
+  $("lst").textContent = !live ? "OFF" : r.talk ? "TALKING" : "LISTENING"; $("lst").style.color = live && r.talk ? "var(--rec)" : "var(--fg)";
+  $("lon").textContent = live ? "STOP" : "START"; $("lon").disabled = busy; $("ptt").disabled = !live; $("ptt").classList.toggle("on", live && r.talk); $("ptt").textContent = live && r.talk ? "LISTEN" : "TALK";
+  $("lpi").style.width = (live ? Math.round(r.level * 100) : 0) + "%"; $("lsig").textContent = !live ? "" : r.talk ? "Sending your voice" : sig(r);
+  $("lmode").disabled = r.on; $("lec").disabled = r.on;
+  let t = "READY", p = 0, d = "";
+  if (busy && r.op === "send") { t = "SENDING"; p = r.frames ? r.sent / r.frames : 0; d = r.frames ? "Frame " + r.sent + " of " + r.frames + " · " + fmt(r.left) + " left" : "Frame " + r.sent + ", repeating until stopped"; }
+  if (busy && r.op === "receive") { t = r.needed ? "RECEIVING" : "LISTENING"; p = r.needed ? r.got / r.needed : 0; d = (r.needed ? "Got " + r.got + " of " + r.needed + " needed · " : "") + sig(r) + " · mic " + Math.round(r.level * 100) + "%"; }
+  if (busy && r.op === "tone") { t = "TEST TONE"; d = "Set the volume so the radio shows normal speech level, no ALC overload"; }
+  $("fst").textContent = t; $("fpi").style.width = Math.round(p * 100) + "%"; $("fsig").textContent = d;
+  $("fstop").hidden = !busy; $("frx").hidden = busy; $("ftone").hidden = busy; $("rmode").disabled = r.on; $("rex").disabled = r.on;
+}
+$("lon").addEventListener("click", () => { say(""); if (was.radio && was.radio.on) A.radioStop(); else A.radioLive(+$("lmode").value, $("lec").checked, $("dn").checked); });
+$("ptt").addEventListener("click", () => A.radioTalk(!(was.radio && was.radio.talk)));
+$("frx").addEventListener("click", () => { say(""); A.radioReceive(+$("rmode").value); });
+$("ftone").addEventListener("click", () => { say(""); A.radioTone(); });
+$("fstop").addEventListener("click", () => A.radioStop());
 let last = { play: null, pos: 0, dur: 0 };
 function render() {
   const l = $("list"); l.textContent = "";
@@ -151,6 +212,7 @@ function tick() {
   const s = JSON.parse(A.status());
   $("cbar").hidden = s.comp < 0; if (s.comp >= 0) { $("cpi").style.width = s.comp * 100 + "%"; $("cpt").textContent = Math.round(s.comp * 100) + "%"; }
   if (s.msg) { say(s.msg); refresh(); }
+  if (s.radio) radioTick(s.radio);
   $("clock").textContent = fmt(s.secs && s.rec ? s.secs : 0);
   $("clock").style.color = s.rec ? "var(--rec)" : "var(--fg)";
   $("size").textContent = s.rec ? (s.paused ? "PAUSED · " : s.waiting ? "WAITING FOR VOICE · " : "") + kb(s.bytes) + " · gain " + (20 * Math.log10(Math.max(s.gain, 0.01))).toFixed(0) + " dB" + (s.routed ? " · " + s.routed : "") : "";

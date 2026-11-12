@@ -348,9 +348,31 @@ public class MainActivity extends Activity {
             String rn = RecService.notice; RecService.notice = null;
             String msg = err != null ? err : (rn != null ? rn : n);
             s.append(",\"sampling\":").append(idleSampling || RecService.sampling || RecService.sampleReq).append(",\"hasNoise\":").append(noiseFile(MainActivity.this).exists());
+            String re = RadioService.error; RadioService.error = null; String rnote = RadioService.notice; RadioService.notice = null;
+            if (msg == null) msg = re != null ? re : rnote;
+            double left = RadioService.totalSecs > 0 ? Math.max(0, RadioService.totalSecs - (System.currentTimeMillis() - RadioService.startedMs) / 1000.0) : 0;
+            s.append(",\"radio\":{\"on\":").append(RadioService.running).append(",\"op\":").append(jq(RadioService.op)).append(",\"talk\":").append(RadioService.talk)
+                    .append(",\"sent\":").append(RadioService.sent).append(",\"frames\":").append(RadioService.frames).append(",\"got\":").append(RadioService.got).append(",\"needed\":").append(RadioService.needed)
+                    .append(",\"sync\":").append(RadioService.sync != 0).append(",\"snr\":").append(Float.isFinite(RadioService.snr) ? RadioService.snr : 0).append(",\"level\":").append(RadioService.level).append(",\"left\":").append(left).append("}");
             s.append(",\"msg\":").append(msg == null ? "null" : jq(msg)).append("}");
             return s.toString();
         }
+        /** Starts one radio job. Recording and the radio link both need the microphone, so only one runs at a time. */
+        private void radio(Intent i) {
+            runOnUiThread(() -> {
+                if (RecService.running) { notice = "Stop the recording first."; return; }
+                if (RadioService.running) return;
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { notice = "Allow the microphone, then press again."; requestPermissions(Build.VERSION.SDK_INT >= 33 ? new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS} : new String[]{Manifest.permission.RECORD_AUDIO}, REQ_PERM); return; }
+                stopPlayback();
+                try { startForegroundService(i.setClass(MainActivity.this, RadioService.class)); } catch (Exception e) { notice = "Can't start the radio link: " + e.getMessage(); }
+            });
+        }
+        @JavascriptInterface public void radioSend(String name, int mode, int extra, boolean repeat) { radio(new Intent().putExtra("op", "send").putExtra("path", named(name).getPath()).putExtra("mode", mode).putExtra("extra", extra).putExtra("repeat", repeat)); }
+        @JavascriptInterface public void radioReceive(int mode) { radio(new Intent().putExtra("op", "receive").putExtra("mode", mode)); }
+        @JavascriptInterface public void radioTone() { radio(new Intent().putExtra("op", "tone")); }
+        @JavascriptInterface public void radioLive(int mode, boolean echo, boolean dn) { radio(new Intent().putExtra("op", "live").putExtra("mode", mode).putExtra("echo", echo).putExtra("denoise", dn).putExtra("source", source).putExtra("treble", treble).putExtra("floor", floorGain).putExtra("lift", liftDb).putExtra("rumble", rumbleHz).putExtra("gate", gateDb).putExtra("comp", compRatio)); }
+        @JavascriptInterface public void radioTalk(boolean on) { RadioService.talk = on; }
+        @JavascriptInterface public void radioStop() { RadioService.running = false; }
         @JavascriptInterface public String list() {
             File[] fs = dir(MainActivity.this).listFiles();
             if (fs == null) return "[]";
@@ -371,6 +393,7 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void startRec(String mode, boolean dn, boolean va) {
             runOnUiThread(() -> {
+                if (RadioService.running) { notice = "Stop the radio link first."; return; }
                 boolean mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
                 boolean nt = (Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) && (Build.VERSION.SDK_INT < 31 || checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED);
                 if (mic && (nt || getSharedPreferences("p", 0).getBoolean("asked2", false))) { startRecording(mode, dn, va); return; }

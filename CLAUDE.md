@@ -2,6 +2,8 @@
 
 Hand-built Android APK, no Gradle: aapt2, javac, d8, zipalign, apksigner; NDK clang for Codec 2 with the 16 KB page flag. Package `pl.dyktafon`. WebView UI in `app/assets/index.html`, voice chain in `app/src/pl/dyktafon/`. Interface text is English. Roadmap in `PLAN.md`.
 
+Two native libraries: `libc2.so` from `third_party/codec2` (1.0, recording, keeps the 450 mode) and `libfdv.so` from `third_party/codec2-1.2` (FreeDV modems for the radio link, mode list in `fdvflags.sh`). Don't edit the upstream files. Radio tests: `tests/radio/`, `tests/t5/`, `tests/ui_radio.js`.
+
 Settings confirmed good on the owner's phone in 2.4. Don't change them without measuring:
 
 - Default audio source VOICE_RECOGNITION (6). MIC caused overload.
