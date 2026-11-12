@@ -16,3 +16,5 @@ Rules:
 - Never commit `*.keystore` or `signing.env`.
 - Don't hand over a build unless it was built and tested from the current source. State plainly what was not tested on a phone.
 - Raise `versionCode` and the version name with each delivered build.
+- Put each delivered APK, signed with the real key, in `dist/` (replace the old one) and update the version and link in `README.md`.
+- Fresh machine: `bash setup.sh`, then `source ./env.sh && bash build.sh`. Keys are in the private `apk-signing-keys` repository, folder `apk-codec2-recorder`.

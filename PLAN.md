@@ -2,6 +2,63 @@
 
 Last updated: 2026-11-12
 
+## Roadmap
+
+Each stage ends with something that can be checked. Stages 1 to 3 need the owner's phone and radio; the rest can be prepared on a computer.
+
+| # | Stage | Done when | State |
+|---|---|---|---|
+| 0 | Radio link built and measured on a computer (2.5, 2.6) | Files and live voice pass simulated channels | Done 2026-11-12 |
+| 1 | First phone test of 2.6 | 2.6 installs over 2.4, recording behaves as in 2.4, and a short recording crosses a table from phone to phone in Robust | Waiting for the owner |
+| 2 | Fix what the phone shows | A file passes phone to phone in all three speeds; live voice is understandable both ways | Not started |
+| 3 | Through a real radio | A file and live voice pass radio to radio; live voice is heard by the FreeDV program on a PC | Not started |
+| 4 | Cable instead of air | Send and receive through a headset cable or USB audio, with transmitter keying | Not started |
+| 5 | Two-way link | Receiver reports missing frames, sender resends only those; short text messages | Not started |
+| 6 | FlatRaster over radio | The same link in apk-codec2flatraster, with a low-bitrate Radio preset | Not started |
+| 7 | Side tracks, any time | Offline transcription; RNNoise comparison; background music removal | Plans below |
+
+### Stage 1: first phone test (owner)
+
+1. Install `dist/Codec2Recorder-2.6.apk` over 2.4. Make one recording with the usual settings and play it: nothing should differ from 2.4.
+2. Files tab, TEST TONE on phone A at about three quarters media volume. It should be loud and clean, not rattling.
+3. Phone B: Files, RECEIVE, speed Robust. Phone A: same speed, SEND on a short recording. Hold A's speaker about 5 cm from B's microphone.
+4. Note what B shows: "Signal locked" or not, SNR, "Got N of M", mic %. Then repeat at 30 cm.
+5. SEND ANY FILE with a small text file; look for it in Download/Codec2Recorder on B.
+6. Live tab on both, 700D: START on both, TALK on A. Try A with a headset microphone, then without and with "Cancel this phone's own sound".
+
+Report the numbers from step 4 and what was heard in step 6.
+
+### Stage 2: likely fixes, depending on stage 1
+
+- No lock at all: check microphone source (Unprocessed against Voice recognition), add a switch for it; save what the microphone heard to a WAV for a look on a computer.
+- Lock but frames lost: speaker distortion (lower the modem level in the app, not only the volume), or echo (closer coupling).
+- Mic % near 100: add an input level warning.
+- Sending stops with the screen off: add a wake lock.
+- Live talk garbled by the phone's own speaker: make the headset route or echo cancelling the default, or add a short "record, then send" mode in the Live tab.
+
+### Stage 3: through a radio
+
+- Transmitter into a dummy load first. Set the level with TEST TONE so ALC barely moves; speech processor off.
+- VOX: check the 1 s lead-in tone opens it and the short gaps between bursts don't drop it; make both adjustable if needed.
+- Station identification: most licence rules need the call sign in plain form. Add a call sign setting and send it before each data transmission (voice announcement by the operator at first, CW ID later).
+- State the bandwidth of the chosen mode on screen (Fast 1700 Hz, Robust 500 Hz, Very robust 250 Hz, 700D about 1.1 kHz, 700E about 1.5 kHz).
+- Compare live voice with the FreeDV program on a PC, both directions.
+
+### Stage 4: cable
+
+- Output and input through a wired or USB headset adapter; choose devices explicitly so the modem never goes to the wrong speaker.
+- Keying: VOX first, then a USB serial RTS/DTR line.
+
+### Stage 5: two-way link
+
+- Short acknowledgement frames in DATAC13 or DATAC14 from upstream; the receiver lists missing frames, the sender sends only repair frames for them.
+- Text messages typed in the app, sent as small files.
+
+### Housekeeping
+
+- `libfdv.so` is about 1.3 MB per processor type, mostly error-correction tables for modes the app doesn't use. Trim without editing upstream files if possible.
+- `tests/ui.py` needs Python Playwright, which the cloud sessions don't have; port it to Node like `tests/ui_radio.js`.
+
 ## Status
 
 | Part | State |
@@ -24,7 +81,7 @@ Last updated: 2026-11-12
 | Record, Live and Files tabs (2.5) | Page tested against a stub of the app, not on a phone |
 | Offline transcription, Polish and English | Not started, plan below |
 
-## Next step 1: radio link with FreeDV modems
+## Radio link: what was built and measured
 
 Decided 2026-11-12: use the FreeDV modems from upstream Codec 2 (LGPL 2.1, as now) instead of HamDRM (GPL-3.0, QAM that needs a clean signal, no Codec 2 voice). Build it here first; FlatRaster copies it later.
 
@@ -102,14 +159,7 @@ What this says:
 - Live listening without earphones: decoded voice re-enters the microphone. In simulation at 6 dB below the signal it did no harm.
 - Any real radio, VOX timing, ALC.
 
-### To do
-
-1. Phone to phone across a table: test tone, a file in each speed, then live voice.
-2. Through a radio into a dummy load or on air, then against the FreeDV program on a PC (live voice).
-3. If acoustic coupling is the weak point: cable or USB audio.
-4. Later: two-way resend, copy the link into FlatRaster.
-
-## Next step 2: offline transcription
+## Side track: offline transcription
 
 The user downloads a language model once, inside the app. After that, transcription needs no internet.
 

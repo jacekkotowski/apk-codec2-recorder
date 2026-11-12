@@ -17,3 +17,5 @@ tests/c2test
 *.png
 __pycache__/
 tests/radio/out/
+env.sh
+!dist/*.apk
