@@ -39,7 +39,7 @@ static radio *radio_open(int mode, int frames_per_burst) {
     r->bytes = malloc(r->payload + 2);
   } else {
     freedv_set_clip(r->f, 1); freedv_set_tx_bpf(r->f, 1);   /* more average power for the same peak */
-    freedv_set_squelch_en(r->f, 1);
+    freedv_set_squelch_en(r->f, 1); freedv_set_snr_squelch_thresh(r->f, -2.0f); /* the default of 0 dB mutes signals the modem can still decode */
     freedv_passthrough_gain(r->f, 0.0f);                    /* silence, not channel noise, while there is no signal */
     r->speech = malloc(sizeof(short) * freedv_get_n_max_speech_samples(r->f));
   }

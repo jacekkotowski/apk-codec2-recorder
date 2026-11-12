@@ -19,8 +19,9 @@ Last updated: 2026-11-12
 | Look-ahead limiter and noise gate | Measured on synthetic speech, waiting for phone test |
 | Bluetooth microphones | Built, not tested: no Bluetooth headset available in testing |
 | Remove background music | Not started, plan below |
-| Radio: file transport with repair frames (`Fountain.java`) | Tested on a computer (`tests/t5`) |
-| Radio: FreeDV modem, send and receive screens, live voice | Not started: needs approval to compile upstream Codec 2 here |
+| Radio: sending and receiving recordings as files, with repair frames (2.5) | Modem and transport tested on a computer through simulated channels. Android audio part built, not run anywhere |
+| Radio: live voice, FreeDV 700D and 700E (2.5) | Modem tested on a computer. Android part built, not run anywhere |
+| Record, Live and Files tabs (2.5) | Page tested against a stub of the app, not on a phone |
 | Offline transcription, Polish and English | Not started, plan below |
 
 ## Next step 1: radio link with FreeDV modems
@@ -38,18 +39,74 @@ Modes, from upstream `README_data.md` (commit 310777b, 2026-03-17). SNR is the p
 
 Each modem frame has LDPC error correction and a CRC16, so a frame arrives whole or not at all.
 
-### Done
+### Built in 2.5
 
-- `Fountain.java`: cuts a file into modem frames and adds any number of repair frames. The receiver rebuilds the file from any k different frames (k = number of plain frames), in any order, so a one-way broadcast survives lost frames without asking for resends. Carries name, length and CRC32. Test: `tests/t5/FT.java`, frame sizes 54, 126, 510, loss up to 50%; one extra frame was needed in 9 of 2000 runs.
+- `third_party/codec2-1.2`: unchanged upstream library sources, built into `libfdv.so` with only 700D, 700E, DATAC1, DATAC3, DATAC4. The recorder's `libc2.so` (Codec 2 1.0) is untouched, because 1.2 dropped the 450 bit/s mode.
+- `Fountain.java`: cuts a file into modem frames and adds any number of repair frames. The receiver rebuilds the file from any k different frames (k = number of plain frames), in any order. Carries name, length and CRC32.
+- `RadioLink.java`: 1 s lead-in tone (opens the transmitter's VOX), then bursts of 4 frames, each burst with its own preamble and postamble so the receiver can lock on again after a gap. "Repeat until stopped" keeps making new repair frames.
+- `RadioService.java`: send, receive, live voice (tap to talk), test tone. Receives with the Unprocessed microphone source where the phone has it, else Voice recognition. Plays as plain media sound.
+- Page: Record (settings folded behind a button, values unchanged), Live, Files.
+
+### Measured on a computer, 2026-11-12 (`tests/radio/run.py`)
+
+Simulated channels, not real ones. SNR is in a 3 kHz band. "Speaker to mic" is a small-speaker response plus room echo with 0.3 s decay.
+
+#### Files: 2.6 kB with 50% repair frames, received complete in N of 3 runs
+
+| Channel | Fast | Robust | Very robust |
+|---|---|---|---|
+| Clean | 3/3 | 3/3 | 3/3 |
+| Noise, SNR 10 dB | 3/3 | 3/3 | 3/3 |
+| Noise, SNR 5 dB | 3/3 | 3/3 | 3/3 |
+| Noise, SNR 2 dB | 3/3 | 3/3 | 3/3 |
+| Noise, SNR 0 dB | 0/3 | 3/3 | 3/3 |
+| Noise, SNR -3 dB | 0/3 | 3/3 | 3/3 |
+| Noise, SNR -5 dB | 0/3 | 0/3 | 3/3 |
+| HF fading, SNR 10 dB | 3/3 | 3/3 | 3/3 |
+| HF fading, SNR 5 dB | 3/3 | 3/3 | 3/3 |
+| HF fading, SNR 0 dB | 0/3 | 2/3 | 1/3 |
+| Speaker to mic, close, distorted, clocks 100 ppm apart, SNR 15 dB | 3/3 | 3/3 | 3/3 |
+| Speaker to mic, echo 5 dB below direct, SNR 10 dB | 3/3 | 3/3 | 3/3 |
+| Speaker to mic, echo as loud as direct | 0/3 | 0/3 | 2/3 |
+| 8 s gap in the middle | 3/3 | 3/3 | 3/3 |
+| Time on air, seconds | 52.5 | 119.8 | 444.5 |
+
+Frames decoded from 10 minutes of pure noise: Fast 0, Robust 0, Very robust 0
+
+#### Live voice: time in sync, and how well the decoded loudness contour matches the clean-channel decode (1.00 = same)
+
+| Channel | 700D | 700E |
+|---|---|---|
+| Clean | 98%, 1.00 | 99%, 1.00 |
+| Noise, SNR 5 dB | 98%, 0.99 | 99%, 0.99 |
+| Noise, SNR 2 dB | 98%, 0.99 | 99%, 0.99 |
+| Noise, SNR 0 dB | 98%, 0.98 | 99%, 0.73 |
+| Noise, SNR -2 dB | 98%, 0.88 | 99%, 0.53 |
+| HF fading, SNR 5 dB | 98%, 0.79 | 99%, 0.93 |
+| Speaker to mic, close, distorted, clocks 100 ppm apart, SNR 15 dB | 98%, 0.99 | 99%, 1.00 |
+| Speaker to mic, echo 5 dB below direct, SNR 10 dB | 98%, 0.95 | 99%, 0.98 |
+| Speaker to mic, close, with the decoded voice leaking into the mic 6 dB below the signal | 98%, 0.99 | 99%, 0.94 |
+
+What this says:
+
+- The phone must be held close to the radio's microphone. When echo is as loud as the direct sound, files fail in Fast and Robust.
+- Distortion, a 100 ppm clock difference and an 8 s gap did not stop a file.
+- 700D holds up better in plain noise, 700E in fading.
+- The loudness-contour figure shows the voice came through at the right moments. It is not a measure of how clear it sounds.
+
+### Not tested, needs the phone
+
+- Everything in `RadioService`: whether the phone's speaker and microphone pass the modem tones, what the Unprocessed source really does, levels.
+- Live talking into the phone itself: the speaker's modem sound reaches the phone's own microphone. Two answers are built, both untried: a headset microphone, or the "Cancel this phone's own sound" switch (Android's echo canceller).
+- Live listening without earphones: decoded voice re-enters the microphone. In simulation at 6 dB below the signal it did no harm.
+- Any real radio, VOX timing, ALC.
 
 ### To do
 
-1. Add the upstream modem sources to `third_party/codec2`, only 700D, 700E, DATAC1, DATAC3, DATAC4 enabled. The current copy is version 1.0 with voice files only. Check that existing `.c2` files decode to identical samples.
-2. Computer test: file to modem audio, through noise, echo, clipping and a sample-rate offset, back to a file. Replace the SNR column above with measured numbers.
-3. JNI and an Android send path (speaker) and receive path (microphone, Unprocessed source), with a lead-in tone for the transmitter's VOX and a level test tone.
-4. Interface in three tabs: Record, Live (push to talk), Files (send, receive).
-5. Phone to phone across a room, then through a radio, then against the FreeDV program on a PC.
-6. Later: cable or USB audio, two-way resend.
+1. Phone to phone across a table: test tone, a file in each speed, then live voice.
+2. Through a radio into a dummy load or on air, then against the FreeDV program on a PC (live voice).
+3. If acoustic coupling is the weak point: cable or USB audio.
+4. Later: two-way resend, copy the link into FlatRaster.
 
 ## Next step 2: offline transcription
 

@@ -1,7 +1,7 @@
 """Radio link measurements on a computer. Needs tests/radio/build.sh to have run, python3 with numpy, and a speech file
 (8 kHz, 16 bit raw, about 10 s) as the first argument for the live-voice part.
 Sends a 2.6 kB file (30 s of 700C speech) with 50% repair frames through simulated channels, three random runs each.
-python3 tests/radio/run.py SPEECH.raw"""
+python3 tests/radio/run.py SPEECH.raw [--voice-only]"""
 import os, subprocess, sys, numpy as np
 here = os.path.dirname(os.path.abspath(__file__)); out = os.path.join(here, 'out'); os.chdir(out)
 J = ['java', '-Djava.library.path=.', '-cp', '.', 'pl.dyktafon.RT']
@@ -17,6 +17,8 @@ FILE_CASES = [
  ('Speaker to mic, echo as loud as direct', ['--room', 0]),
  ('8 s gap in the middle', ['--drop', 8]),
 ]
+VOICE_ONLY = '--voice-only' in sys.argv
+if VOICE_ONLY: FILE_CASES = []
 print('## Files: 2.6 kB with 50% repair frames, received complete in N of 3 runs\n')
 print('| Channel | ' + ' | '.join(NAMES.values()) + ' |'); print('|---|' + '---|' * 3)
 secs = {}
@@ -35,14 +37,14 @@ for m in NAMES:
 for name, _ in FILE_CASES: print('| ' + name + ' | ' + ' | '.join(rows[name]) + ' |')
 print('| Time on air, seconds | ' + ' | '.join(secs[m] for m in NAMES) + ' |')
 # No signal at all: noise must never produce a frame.
-(np.random.default_rng(3).standard_normal(8000 * 600) * 3000).astype('<i2').tofile('noise.raw')
-print('\nFrames decoded from 10 minutes of pure noise: ' + ', '.join(NAMES[m] + ' ' + run(*J, 'rx', str(m), 'noise.raw', 'back').stdout.split('frames ok ')[1].split(',')[0] for m in NAMES))
+if not VOICE_ONLY: (np.random.default_rng(3).standard_normal(8000 * 600) * 3000).astype('<i2').tofile('noise.raw')
+if not VOICE_ONLY: print('\nFrames decoded from 10 minutes of pure noise: ' + ', '.join(NAMES[m] + ' ' + run(*J, 'rx', str(m), 'noise.raw', 'back').stdout.split('frames ok ')[1].split(',')[0] for m in NAMES))
 
 if len(sys.argv) > 1:
     def env(x, w=160): n = len(x) // w; return np.log(np.abs(x[:n * w].astype(float)).reshape(n, w).sum(1) + 1)
     def match(a, b):  # loudness-contour agreement of two speech signals, best over a small shift
         best = 0
-        for lag in range(-6, 30):
+        for lag in range(-40, 80):  # squelch drops output while the modem is still locking on
             x, y = (a[lag:], b) if lag >= 0 else (a, b[-lag:]); n = min(len(x), len(y))
             if n > 50: best = max(best, np.corrcoef(x[:n], y[:n])[0, 1])
         return best
