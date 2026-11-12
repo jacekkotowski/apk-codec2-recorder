@@ -2,9 +2,9 @@
 
 Offline Android dictaphone that stores speech with Codec 2, from 3200 down to 450 bit/s. It also compresses existing audio files. Voice chain: rumble cut, denoiser with noise sample, gate, treble and consonant lift, leveler, compressor and look-ahead limiter.
 
-It can also pass speech through an SSB radio by sound alone: the phone's speaker plays into the radio's microphone and the phone's microphone listens to the radio's speaker. Recordings go as files with error correction (FreeDV data modes plus repair frames), and live voice goes as FreeDV 700D or 700E.
+It can also pass speech through an SSB radio by sound alone: the phone's speaker plays into the radio's microphone and the phone's microphone listens to the radio's speaker. Recordings and any other small file (text, pictures) go as files with error correction (FreeDV data modes plus repair frames), and live voice goes as FreeDV 700D or 700E.
 
-Current version: 2.5. The radio link in 2.5 is tested on a computer only, not on a phone or a radio. Roadmap and measurements in [PLAN.md](PLAN.md).
+Current version: 2.6. The radio link (2.5, 2.6) is tested on a computer only, not on a phone or a radio. Roadmap and measurements in [PLAN.md](PLAN.md).
 
 ## Build
 

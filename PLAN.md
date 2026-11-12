@@ -39,13 +39,14 @@ Modes, from upstream `README_data.md` (commit 310777b, 2026-03-17). SNR is the p
 
 Each modem frame has LDPC error correction and a CRC16, so a frame arrives whole or not at all.
 
-### Built in 2.5
+### Built in 2.5 and 2.6
 
 - `third_party/codec2-1.2`: unchanged upstream library sources, built into `libfdv.so` with only 700D, 700E, DATAC1, DATAC3, DATAC4. The recorder's `libc2.so` (Codec 2 1.0) is untouched, because 1.2 dropped the 450 bit/s mode.
 - `Fountain.java`: cuts a file into modem frames and adds any number of repair frames. The receiver rebuilds the file from any k different frames (k = number of plain frames), in any order. Carries name, length and CRC32.
 - `RadioLink.java`: 1 s lead-in tone (opens the transmitter's VOX), then bursts of 4 frames, each burst with its own preamble and postamble so the receiver can lock on again after a gap. "Repeat until stopped" keeps making new repair frames.
 - `RadioService.java`: send, receive, live voice (tap to talk), test tone. Receives with the Unprocessed microphone source where the phone has it, else Voice recognition. Plays as plain media sound.
 - Page: Record (settings folded behind a button, values unchanged), Live, Files.
+- 2.6: SEND ANY FILE (text, pictures, anything up to 100 kB) through the same transport. A received file that is not a recording is saved to Download/Codec2Recorder. Text and binary files with non-ASCII names went through the computer test unchanged; the Android file picker and the save to Downloads are not run anywhere.
 
 ### Measured on a computer, 2026-11-12 (`tests/radio/run.py`)
 

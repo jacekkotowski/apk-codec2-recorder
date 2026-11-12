@@ -35,7 +35,8 @@ import java.util.Date;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
-    private static final int REQ_PERM = 1, REQ_IMPORT = 2, REQ_COMPRESS = 3;
+    private static final int REQ_PERM = 1, REQ_IMPORT = 2, REQ_COMPRESS = 3, REQ_SENDFILE = 4;
+    private Intent sendArgs;
     private volatile float compProgress = -1; private volatile boolean compCancel;
     private String compMode; private boolean compDn, compVa;
     private static final int BG = Color.rgb(27, 36, 48);
@@ -208,12 +209,13 @@ public class MainActivity extends Activity {
         return h;
     }
 
-    private void toDownloads(String display, String mime, byte[] head, InputStream body) throws Exception {
+    private void toDownloads(String display, String mime, byte[] head, InputStream body) throws Exception { toDownloads(this, display, mime, head, body); }
+    static void toDownloads(Context ctx, String display, String mime, byte[] head, InputStream body) throws Exception {
         ContentValues v = new ContentValues();
         v.put(MediaStore.Downloads.DISPLAY_NAME, display);
         v.put(MediaStore.Downloads.MIME_TYPE, mime);
         v.put(MediaStore.Downloads.RELATIVE_PATH, "Download/Codec2Recorder");
-        ContentResolver r = getContentResolver();
+        ContentResolver r = ctx.getContentResolver();
         Uri u = r.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
         if (u == null) throw new IllegalStateException("Android refused to create the file");
         try (OutputStream o = r.openOutputStream(u)) {
@@ -317,7 +319,40 @@ public class MainActivity extends Activity {
         }, "compress").start();
     }
 
+    /** Largest file the radio link takes. At the fast speed this is already about 20 minutes on air. */
+    static final int MAX_SEND = 100 * 1024;
+    /** Copies the chosen file into the app's cache under a short safe name, then starts sending it. */
+    private void sendPicked(Uri u, Intent args) {
+        new Thread(() -> {
+            try (InputStream in = new BufferedInputStream(getContentResolver().openInputStream(u))) {
+                String nm = displayName(u).replaceAll("[^\\p{L}\\p{N} _.-]", "_");
+                int dot = nm.lastIndexOf('.'); String ext = dot > 0 && nm.length() - dot <= 10 ? nm.substring(dot) : "", base = ext.isEmpty() ? nm : nm.substring(0, dot);
+                while ((base + ext).getBytes(java.nio.charset.StandardCharsets.UTF_8).length > Fountain.MAX_NAME && base.length() > 1) base = base.substring(0, base.length() - 1);
+                File d = new File(getCacheDir(), "send"); d.mkdirs();
+                File[] old = d.listFiles(); if (old != null) for (File o : old) o.delete();
+                File f = new File(d, base + ext); long n = 0; int k; byte[] buf = new byte[8192];
+                try (FileOutputStream o = new FileOutputStream(f)) { while ((k = in.read(buf)) > 0) { n += k; if (n > MAX_SEND) break; o.write(buf, 0, k); } }
+                if (n > MAX_SEND) { f.delete(); notice = "This file is larger than 100 kB. That is too long for a radio link: shrink it first."; return; }
+                if (n == 0) { f.delete(); notice = "This file is empty."; return; }
+                runOnUiThread(() -> startRadio(args.putExtra("path", f.getPath())));
+            } catch (Exception e) { notice = "Can't read this file: " + e.getMessage(); }
+        }, "pick").start();
+    }
+    /** Starts one radio job. Recording and the radio link both need the microphone, so only one runs at a time. Returns false if it could not start. */
+    private boolean radioReady() {
+        if (RecService.running) { notice = "Stop the recording first."; return false; }
+        if (RadioService.running) return false;
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { notice = "Allow the microphone, then press again."; requestPermissions(Build.VERSION.SDK_INT >= 33 ? new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS} : new String[]{Manifest.permission.RECORD_AUDIO}, REQ_PERM); return false; }
+        return true;
+    }
+    private void startRadio(Intent i) {
+        if (!radioReady()) return;
+        stopPlayback();
+        try { startForegroundService(i.setClass(this, RadioService.class)); } catch (Exception e) { notice = "Can't start the radio link: " + e.getMessage(); }
+    }
+
     @Override protected void onActivityResult(int req, int res, Intent data) {
+        if (req == REQ_SENDFILE) { if (res == RESULT_OK && data != null && data.getData() != null && sendArgs != null) sendPicked(data.getData(), sendArgs); return; }
         if (req == REQ_COMPRESS) { if (res == RESULT_OK && data != null && data.getData() != null) compress(data.getData(), compMode, compDn, compVa); return; }
         if (req != REQ_IMPORT || res != RESULT_OK || data == null || data.getData() == null) return;
         Uri u = data.getData();
@@ -357,14 +392,13 @@ public class MainActivity extends Activity {
             s.append(",\"msg\":").append(msg == null ? "null" : jq(msg)).append("}");
             return s.toString();
         }
-        /** Starts one radio job. Recording and the radio link both need the microphone, so only one runs at a time. */
-        private void radio(Intent i) {
+        private void radio(Intent i) { runOnUiThread(() -> startRadio(i)); }
+        /** Lets the user pick any file, then sends it. */
+        @JavascriptInterface public void radioSendFile(int mode, int extra, boolean repeat) {
             runOnUiThread(() -> {
-                if (RecService.running) { notice = "Stop the recording first."; return; }
-                if (RadioService.running) return;
-                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { notice = "Allow the microphone, then press again."; requestPermissions(Build.VERSION.SDK_INT >= 33 ? new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS} : new String[]{Manifest.permission.RECORD_AUDIO}, REQ_PERM); return; }
-                stopPlayback();
-                try { startForegroundService(i.setClass(MainActivity.this, RadioService.class)); } catch (Exception e) { notice = "Can't start the radio link: " + e.getMessage(); }
+                if (!radioReady()) return;
+                sendArgs = new Intent().putExtra("op", "send").putExtra("mode", mode).putExtra("extra", extra).putExtra("repeat", repeat);
+                startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), REQ_SENDFILE);
             });
         }
         @JavascriptInterface public void radioSend(String name, int mode, int extra, boolean repeat) { radio(new Intent().putExtra("op", "send").putExtra("path", named(name).getPath()).putExtra("mode", mode).putExtra("extra", extra).putExtra("repeat", repeat)); }

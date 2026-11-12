@@ -91,7 +91,7 @@ public class RadioService extends Service {
             Thread watch = new Thread(() -> { while (running) { sent = s.sent; try { Thread.sleep(200); } catch (InterruptedException e) { return; } } });
             watch.start();
             s.run((b, n) -> t.write(b, 0, n), () -> !running, repeat);
-            if (running) { t.stop(); Thread.sleep(600); notice = "Sent " + f.getName(); }
+            if (running) { t.stop(); Thread.sleep(600); notice = "Sent " + f.getName() + " (" + f.length() + " bytes)"; }
         } finally { drop(t); s.close(); }
     }
 
@@ -108,16 +108,19 @@ public class RadioService extends Service {
         } finally { try { rec.stop(); } catch (Exception ignored) {} rec.release(); r.close(); }
     }
 
-    /** Keeps a received recording with the others. Anything else goes to a separate folder. */
+    /** A received recording joins the others in the app. Any other file goes to Download/Codec2Recorder, where the phone's Files app shows it. */
     private String save(String name, byte[] data) throws Exception {
         String clean = new File(name).getName().replaceAll("[^\\p{L}\\p{N} _.-]", "_"); if (clean.isEmpty()) clean = "received";
-        boolean c2 = data.length >= C2.HEADER && C2.modeFromHeader(data) >= 0;
-        File d = c2 ? MainActivity.dir(this) : new File(getExternalFilesDir(null), "received"); d.mkdirs();
-        String base = clean.replaceAll("\\.[^.]*$", ""), ext = c2 ? ".c2" : clean.substring(base.length());
-        File out = new File(d, "rx_" + base + ext);
-        for (int k = 2; out.exists(); k++) out = new File(d, "rx_" + base + "_" + k + ext);
-        try (FileOutputStream o = new FileOutputStream(out)) { o.write(data); }
-        return c2 ? "Received " + out.getName() : "Received a file that is not a recording. Saved as " + out.getPath();
+        if (data.length >= C2.HEADER && C2.modeFromHeader(data) >= 0) {
+            String base = clean.replaceAll("\\.[^.]*$", ""); File d = MainActivity.dir(this);
+            File out = new File(d, "rx_" + base + ".c2");
+            for (int k = 2; out.exists(); k++) out = new File(d, "rx_" + base + "_" + k + ".c2");
+            try (FileOutputStream o = new FileOutputStream(out)) { o.write(data); }
+            return "Received " + out.getName();
+        }
+        String mime = java.net.URLConnection.guessContentTypeFromName(clean);
+        MainActivity.toDownloads(this, "rx_" + clean, mime == null ? "application/octet-stream" : mime, null, new java.io.ByteArrayInputStream(data));
+        return "Received rx_" + clean + " (" + data.length + " bytes). Saved to Download/Codec2Recorder.";
     }
 
     /** Live voice, one direction at a time. Listening decodes the radio's sound; talking sends the microphone through the voice chain and the modem. */
