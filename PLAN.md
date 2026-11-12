@@ -1,6 +1,6 @@
 # Codec2 Recorder plan
 
-Last updated: 2026-11-03
+Last updated: 2026-11-12
 
 ## Status
 
@@ -19,16 +19,37 @@ Last updated: 2026-11-03
 | Look-ahead limiter and noise gate | Measured on synthetic speech, waiting for phone test |
 | Bluetooth microphones | Built, not tested: no Bluetooth headset available in testing |
 | Remove background music | Not started, plan below |
-| HamDRM transfer over HF | Not started |
+| Radio: file transport with repair frames (`Fountain.java`) | Tested on a computer (`tests/t5`) |
+| Radio: FreeDV modem, send and receive screens, live voice | Not started: needs approval to compile upstream Codec 2 here |
 | Offline transcription, Polish and English | Not started, plan below |
 
-## Next step 1: HamDRM transfer
+## Next step 1: radio link with FreeDV modems
 
-1. Read the QSSTV source (GPL-3.0) to confirm whether HamDRM can carry any file or only images.
-2. Build sending and receiving of .c2 files.
-3. Test both ways against real QSSTV, then on air.
+Decided 2026-11-12: use the FreeDV modems from upstream Codec 2 (LGPL 2.1, as now) instead of HamDRM (GPL-3.0, QAM that needs a clean signal, no Codec 2 voice). Build it here first; FlatRaster copies it later.
 
-Adding this code would make the app subject to GPL-3.0 if it is distributed.
+Modes, from upstream `README_data.md` (commit 310777b, 2026-03-17). SNR is the project's own figure for a poor fading channel, not measured here.
+
+| Mode | Use | Bandwidth | Net speed | Bytes per frame | Frame | Works at |
+|---|---|---|---|---|---|---|
+| FreeDV 700D / 700E | Live voice, carries Codec 2 700C | 1.1 to 1.5 kHz | live | | | not yet looked up |
+| DATAC1 | Files, good signal | 1700 Hz | 980 bit/s | 510 | 4.18 s | 5 dB |
+| DATAC3 | Files, weak signal | 500 Hz | 321 bit/s | 126 | 3.19 s | 0 dB |
+| DATAC4 | Files, very weak signal | 250 Hz | 87 bit/s | 54 | 5.17 s | -4 dB |
+
+Each modem frame has LDPC error correction and a CRC16, so a frame arrives whole or not at all.
+
+### Done
+
+- `Fountain.java`: cuts a file into modem frames and adds any number of repair frames. The receiver rebuilds the file from any k different frames (k = number of plain frames), in any order, so a one-way broadcast survives lost frames without asking for resends. Carries name, length and CRC32. Test: `tests/t5/FT.java`, frame sizes 54, 126, 510, loss up to 50%; one extra frame was needed in 9 of 2000 runs.
+
+### To do
+
+1. Add the upstream modem sources to `third_party/codec2`, only 700D, 700E, DATAC1, DATAC3, DATAC4 enabled. The current copy is version 1.0 with voice files only. Check that existing `.c2` files decode to identical samples.
+2. Computer test: file to modem audio, through noise, echo, clipping and a sample-rate offset, back to a file. Replace the SNR column above with measured numbers.
+3. JNI and an Android send path (speaker) and receive path (microphone, Unprocessed source), with a lead-in tone for the transmitter's VOX and a level test tone.
+4. Interface in three tabs: Record, Live (push to talk), Files (send, receive).
+5. Phone to phone across a room, then through a radio, then against the FreeDV program on a PC.
+6. Later: cable or USB audio, two-way resend.
 
 ## Next step 2: offline transcription
 
@@ -98,4 +119,3 @@ Separating speech from music needs a neural source-separation model, such as Dem
 - Codec 2: LGPL 2.1
 - Codec2Recorder (starting point for features and the library setup): MIT
 - Vosk and its small models listed here: Apache 2.0
-- QSSTV, if its code is used: GPL-3.0
