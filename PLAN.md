@@ -2,6 +2,14 @@
 
 Last updated: 2026-11-14
 
+## Start here
+
+Next thing to build: **stage 9, part B: DRED recordings in the app, version 2.7.** The steps are under "Part B: DRED in the app" below and are written for a session that starts cold.
+
+- The work is on branch `claude/tender-cray-gfs8aa`. `main` is older and does not have 2.5, 2.6 or this plan (stage 0a). Start the session on this branch, or bring `main` up to date first.
+- Current delivered version: 2.6, in `dist/`. Not yet tested on a phone (stage 1).
+- The session needs the Android SDK (`bash setup.sh`) and the signing keys to deliver an APK. Without them it can still do the computer steps.
+
 ## Roadmap
 
 Each stage ends with something that can be checked. Stages 1 to 3 need the owner's phone and radio; the rest can be prepared on a computer.
@@ -18,7 +26,8 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | 6 | FlatRaster over radio | The same link in apk-codec2flatraster, with a low-bitrate Radio preset | Not started |
 | 7 | Side tracks, any time | Offline transcription; RNNoise comparison; background music removal | Plans below |
 | 8 | RADE: natural-sounding voice, live and as a saved message | RADE measured on a computer through the same simulated channels as 700D, and a decision made | Not started. Running the downloaded code needs the owner's approval |
-| 9 | DRED recordings: record, play and send a neural format smaller than 700C | Part A: a DRED file made and played on a computer, with size and listening results. Part B: the app records, plays, exports and sends it, confirmed on the phone | Part A measured on a computer 2026-11-14, waiting for the owner to listen. Part B not started |
+| 9 | DRED recordings: record, play and send a neural format smaller than 700C | Part A: a DRED file made and played on a computer, with size and listening results. Part B: the app records, plays, exports and sends it, confirmed on the phone | Part A done 2026-11-14 and the owner said go. Part B (version 2.7) is the next thing to build; the steps are in stage 9 below |
+| 10 | Retire Codec 2 recording | DRED is the default; old `.c2` files still play | After the phone test of 2.7, on the owner's word |
 
 ### Stage 0a: project records
 
@@ -193,18 +202,133 @@ Known limits:
 5. Compare with Codec 2. Done by STOI and by a recogniser for English. Not done: listening by the owner, real Polish speech.
 6. Decide go or no go, and fix the settings. Waiting for the owner's listening. Proposal: offer two levels, q7 ("about the size of 700C, clearer") and q4 ("about the size of 1300, clearest"), and nothing coarser than q9.
 
-#### Part B: in the app, only after a go and after stage 1
+#### Owner's verdict, 2026-11-14
 
-1. File format `.dred`: magic bytes, format version, Opus library version and its DRED version number, quality level, then one block per second with a 2-byte length before each. Seeking goes by block, so to the second.
-2. Put the Opus 1.6.1 sources in `third_party/`, unchanged. Build `libdred.so` with the NDK for the three processor types, with the 16 KB page flag and DRED on, and a small JNI layer like `c2jni.c` built from `tests/dred/dredtest.c`.
-3. Recording: add 16 kHz capture for this format only. The confirmed 8 kHz settings in `CLAUDE.md` stay as they are for Codec 2. Decide by measurement whether the voice chain runs at 16 kHz, or whether DRED gets a lighter chain.
-4. Add "DRED" to the compression list, with its size per minute.
-5. Player: play, seek, save WAV, share. Open `.dred` files from other apps.
-6. "Compress existing audio files" can produce `.dred`.
-7. Radio link: a received `.dred` joins the recordings list like a `.c2`. The time on air shown before sending comes from the file size, as now.
-8. Tests on a computer, new version number, APK in `dist/`, then the owner's phone test.
+The owner listened to the page and judged DRED good down to q12, and Codec 2 obsolete beside it. That is a go for Part B. The recogniser disagreed about q12 (88% of words wrong), and the Polish clips were synthetic, so q12 is offered but is not the default until it has been heard on real recordings from the phone.
+
+#### Part B: DRED in the app (version 2.7)
+
+Written to be carried out by a new session with no memory of this one. Read `CLAUDE.md` first. Work on a branch that contains this file; `main` may be older (see stage 0a).
+
+Outcome: the app records, plays, exports and sends `.dred` recordings beside `.c2`. Codec 2 recording, the confirmed 2.4 settings and the radio link behave exactly as in 2.6.
+
+Decisions already made:
+
+- DRED on its own, one block per second, fixed quality level, as in `tests/dred/dredtest.c` (`enc2` and `dec2`). That file is the reference: the JNI layer is the same calls.
+- Four levels in the app, named by what the user gets, not by q:
+
+| Name in the app | q | About, per minute | Note |
+|---|---|---|---|
+| DRED best | 4 | 10 kB | Clearest |
+| DRED balanced | 7 | 6 kB | Size of 700C, clearer |
+| DRED small | 9 | 4 kB | Default for new recordings once the phone test passes |
+| DRED smallest | 12 | 2 kB | Owner found it good on the test clips; a recogniser did not |
+
+- Codec 2 stays in 2.7: old recordings must play, live voice on the radio link uses it, and DRED is not yet proven on a phone. Removing Codec 2 recording is stage 10.
+
+What a new session needs:
+
+- Android SDK and NDK: `bash setup.sh` (about 3 GB; if the download hosts are blocked, say so and stop before step 5).
+- Signing: `c2.keystore` and `signing.env` from the private repository `apk-signing-keys`, folder `apk-codec2-recorder`. Without them, do steps 1 to 4 and 9 and hand over no APK.
+- Opus 1.6.1 source: `http://archive.ubuntu.com/ubuntu/pool/main/o/opus/opus_1.6.1.orig.tar.xz`, sha256 `001ac615b9f8f8994b229ad2b1a5969ed12ab48b0d154d0af1016a5899cd6ba1`. The Opus project's own sites were blocked in the session that wrote this; the Ubuntu mirror worked.
+
+Steps. Each ends with a check; do not go on while a check fails.
+
+1. **Opus sources into the repository.** Put the release in `third_party/opus-1.6.1`, upstream files unchanged. Only these are needed: `include/`, `celt/`, `silk/`, `src/`, `dnn/*.c` and `dnn/*.h`, the four `*_sources.mk` files, `COPYING`. Leave out `dnn/torch`, `dnn/training_tf2`, `doc`, `tests`, and the weight files DRED does not use (`bbwenet_data.c`, `lace_data.c`, `nolace_data.c`). The files that get compiled, with their headers, are about 10 MB. Add `COPYING-opus` at the top level and a line in `README.md` under Licences (BSD, three clauses).
+   Check: `tests/dred/build.sh` works against this folder (change it to build from the folder directly, as in step 2, so it no longer needs a separate Opus build).
+
+2. **Build without autotools.** The source lists are in the `.mk` files: `OPUS_SOURCES`, `OPUS_SOURCES_FLOAT`, `CELT_SOURCES`, `SILK_SOURCES`, `SILK_SOURCES_FLOAT`, `DEEP_PLC_SOURCES`, `DRED_SOURCES` (158 files). Flags, tried on a computer on 2026-11-14 with gcc:
+   `-O2 -DOPUS_BUILD -DVAR_ARRAYS -DHAVE_LRINT -DHAVE_LRINTF -DFLOAT_APPROX -DENABLE_DRED -DENABLE_DEEP_PLC -DENABLE_RES24 -DDISABLE_DEBUG_FLOAT -I. -Iinclude -Icelt -Isilk -Isilk/float -Idnn -Isrc`
+   No `config.h`, no processor-specific source files. This gave a 2.5 MB program. On that computer it coded 145 s of speech in 1.0 s and played it in 5.5 s. A file made by this build played correctly on the autotools build and the other way round (same STOI), so files made on one processor type should play on another; check that again in step 9.
+   Put the flags in one place, like `fdvflags.sh`.
+   Check: the plain build of `dredtest` passes `python3 tests/dred/run.py`, with numbers close to the table in Part A.
+
+3. **File format `.dred`.** Fixed 8-byte header, then blocks.
+
+   | Bytes | Meaning |
+   |---|---|
+   | 0 to 3 | `44 52 45 44` ("DRED") |
+   | 4 | Format version, 1 |
+   | 5 | DRED bitstream version of the library, `DRED_EXPERIMENTAL_VERSION`, 12 in Opus 1.6.1 |
+   | 6 | Quality level q, 0 to 15 |
+   | 7 | Frames of 20 ms per block, 50 |
+   | then, repeated | Block length, 2 bytes, big endian, then that many bytes. Length 0 means one block of silence |
+
+   Length in seconds is the number of blocks. A player that meets a bitstream version it does not know must say so and not play noise. Seeking goes to a block, so to the second; build the list of block positions when the file is opened.
+   Write `Dred.java` beside `C2.java`: header, `readHeader`, block index. Pure Java, no Android, so it runs in a computer test.
+   Check: `tests/t6/` round trip: make a file from blocks, read it back, seek, reject a wrong magic and an unknown version.
+
+4. **Native layer.** `app/jni/dredjni.c`, from `enc2` and `dec2` in `tests/dred/dredtest.c`:
+   - coder: open(q), feed one 20 ms frame of 320 samples, `block()` after every 50 frames returning the bytes, close. On stop, feed silence until the block is complete and then two more frames, as `enc2` does.
+   - player: open (starts the Opus decoder with one silent packet and complexity 5, see `start_decoder`), `decode(block)` giving 16000 samples, close.
+   Build `libdred.so` in `build.sh` for arm64-v8a, armeabi-v7a and x86_64 with the 16 KB page flag, like `libc2.so`.
+   Check on a computer first: a host build of the JNI library, driven from Java like `tests/radio/RT.java`, gives the same `.dred` blocks and the same sound as `dredtest` for one speech file.
+
+5. **Recording.** In `RecService`, a second loop for DRED; leave the Codec 2 loop as it is.
+   - `AudioRecord` at 16 kHz, same audio source and device choice as now.
+   - Voice chain: `VoiceChain`, `Denoiser`, `Vad` and `Limiter` are written for 8 kHz and their level constants (`CEILING`, `AUTO_PEAK`, `MAX_AUTO_GAIN`) allow for Codec 2's peak overshoot. Give `VoiceChain` a sample-rate parameter and a level-target parameter that default to today's values. Before anything else, add a test that runs the 8 kHz chain on a fixed input before and after the change and requires identical output. The confirmed settings must not move.
+   - DRED levels: on the test speech the decoded peak was 1.00 times the input peak (99.9th percentile 0.94), so DRED needs no headroom for overshoot. Start with a ceiling near 23000 and no playback boost, and measure.
+   - First version of the 16 kHz chain: rumble cut, leveler, compressor, limiter. Denoiser at 16 kHz second, measured with `tests/dred/run.py` on noisy input with and without it, because noise costs DRED a lot.
+   - Voice activation: gate the sound before the coder, not the coded blocks. Keep 400 ms of sound as pre-roll and feed it when the gate opens. `Vad` can run on an 8 kHz copy of the sound.
+   - Pause: stop feeding the coder.
+   - File name `stamp_DRED-small.dred` and so on.
+   Check: computer test that feeds a speech file through the DRED recording path (without `AudioRecord`) and plays the result back with `dredtest dec2`.
+
+6. **Playing and the list.** `MainActivity` handles `.c2` in `play`, `list`, `saveWav`, `compress`, `importFile`, `rename`, `share`, `saveC2`, and `RadioService` decides whether a received file is a recording. Put the format behind one small interface (open for reading, length in seconds, read next piece of sound, seek, sample rate) with a Codec 2 and a DRED implementation, and use it in all of these.
+   - Play at 16 kHz through `AudioTrack`; decode one block ahead on the playback thread.
+   - `list`: mode name from the header, seconds from the block count.
+   - Save WAV at 16 kHz.
+   - Import and "open with" accept `.dred` by its header.
+   - Rename keeps the `.dred` ending.
+   - "Compress existing audio files" can write DRED: resample the source to 16 kHz instead of 8 kHz.
+   - Radio: a received file with a valid DRED header joins the recordings list. Nothing else changes; time on air already comes from the file size.
+   Check: `node tests/ui_radio.js` extended for the new entries, and the existing tests still pass.
+
+7. **Page.** In `app/assets/index.html`, `MODES` gets the four DRED entries at the top, with size per minute. Keep the saved choice working for users who have a Codec 2 mode stored. Keep the default at 700C in 2.7; the default changes in stage 10. Interface text in English.
+
+8. **Build and deliver.** `versionCode` 18, version name 2.7. Run every test in `README.md` plus the new ones. Build, sign with the real key, replace the APK in `dist/`, update `README.md` (what DRED is, sizes, that only this app plays `.dred`, licences) and this plan. Say plainly what was not run on a phone: everything in steps 5 and 6 that touches Android audio.
+   Expect the APK to grow by about 2.5 MB for each of the three processor types.
+
+9. **Computer checks before handing over.**
+   - A file coded by the x86_64 library plays on a second build made with different compiler settings (the cross-build check above).
+   - A 30-minute recording: file size, no drift in length, memory steady.
+   - Speed with the generic build flags, as an early warning for slow phones.
+
+10. **Phone test by the owner.** Add this as a numbered list at the top of the plan when 2.7 is delivered:
+   - 2.7 installs over 2.6; a Codec 2 recording sounds as before; old `.c2` files play.
+   - Record 30 s of Polish at each DRED level, with and without Denoise and Voice activation. Play, seek, pause.
+   - Does playback stutter? On which phone? (Speed on a phone, above all a 32-bit one, is not measured.)
+   - Save WAV, share, rename, delete.
+   - Recording with the screen off for ten minutes.
+   - Send a DRED recording phone to phone in Robust; it should join the list on the other phone and play.
+   - Which level would you use every day?
+
+Time on air for a 60 s recording with +50% repair, calculated from the burst times measured in stage 0, not measured for these files:
+
+| Recording | Size | Fast | Robust | Very robust |
+|---|---|---|---|---|
+| Codec 2 700C | 6.0 kB | 87 s | 4.4 min | 17 min |
+| DRED small (q9) | 3.8 kB | 53 s | 2.7 min | 10.6 min |
+| DRED smallest (q12) | 2.1 kB | 35 s | 1.6 min | 6 min |
+
+Risks to watch:
+
+- Speed on old and 32-bit phones. If playback cannot keep up, decode ahead into a buffer before starting to play.
+- The DRED format is experimental in Opus 1.6.1. The app must keep this exact library for as long as `.dred` files with bitstream version 12 exist; a newer Opus goes in beside it, not instead of it.
+- A neural player can produce clean-sounding wrong words when the input is noisy. Keep the "save WAV" of important recordings in mind, and keep the denoiser measurement in step 5.
+- Do not change the 8 kHz chain's output. The identical-output test in step 5 is the guard.
 
 Not part of this stage: live voice with DRED. It would be a mode nobody else can decode; see the RADE stage for live voice.
+
+### Stage 10: retire Codec 2 recording
+
+Only after the owner's phone test of 2.7 passes, and only on the owner's word.
+
+1. New recordings default to DRED small.
+2. The Codec 2 modes move behind an "Older formats" switch, or go.
+3. Old `.c2` files still play and export for good: keep `libc2.so` and the Codec 2 player.
+4. The radio link's live voice (FreeDV 700D and 700E) is separate and stays; it uses its own Codec 2 inside `libfdv.so`.
+5. Drop the Codec 2 parts of the voice chain only if nothing uses them any more.
 
 ## Status
 
@@ -226,6 +350,7 @@ Not part of this stage: live voice with DRED. It would be a mode nobody else can
 | Radio: sending and receiving recordings as files, with repair frames (2.5) | Modem and transport tested on a computer through simulated channels. Android audio part built, not run anywhere |
 | Radio: live voice, FreeDV 700D and 700E (2.5) | Modem tested on a computer. Android part built, not run anywhere |
 | Record, Live and Files tabs (2.5) | Page tested against a stub of the app, not on a phone |
+| DRED recordings (stage 9) | Coder, player and comparison with Codec 2 measured on a computer in `tests/dred/`. Nothing in the app yet |
 | Offline transcription, Polish and English | Not started, plan below |
 
 ## Radio link: what was built and measured
