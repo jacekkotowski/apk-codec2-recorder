@@ -105,7 +105,7 @@ Estimates for the coarse copies, not measured. The values are plain numbers with
 
 At 4 bits (60 kB per minute) Opus at 8 kbit/s is the same size, already in Android, and playable anywhere, so only 1 and 2 bits are worth having. A file is tied to one set of network weights: a V1 file needs the V1 decoder for ever.
 
-Possibly a better tool for small natural-sounding recordings: DRED, the speech coder inside Opus that RADE grew out of. It is built to produce bits, about 0.5 kbit/s by its paper (from memory, not checked), and uses the same vocoder family. Its sources are in that repository's Opus tree, but the app builds with it off because the weights are downloaded separately. Whether it can write a standalone file is not checked.
+Possibly a better tool for small natural-sounding recordings: DRED, the speech coder inside Opus that RADE grew out of. It is built to produce bits and uses the same vocoder (FARGAN). From the Opus 1.5 release page, checked 2026-11-14: one second of speech is carried as redundancy for about 12 to 32 kbit/s extra across 50 packets per second, which works out to about 0.24 to 0.64 kbit/s, or 1.8 to 4.8 kB per minute. It adds about 2 MB to the library and is off unless Opus is built with `--enable-dred`. The same page warns that DRED is not yet standardized and the 1.5 version will not match the final one. It is designed to ride inside normal Opus packets as backup against lost packets, not as a codec of its own; whether it can write a standalone file is not checked. Its sources are in that repository's Opus tree, but the app builds with it off.
 
 #### Steps
 
