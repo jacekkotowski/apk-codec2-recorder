@@ -18,7 +18,7 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | 6 | FlatRaster over radio | The same link in apk-codec2flatraster, with a low-bitrate Radio preset | Not started |
 | 7 | Side tracks, any time | Offline transcription; RNNoise comparison; background music removal | Plans below |
 | 8 | RADE: natural-sounding voice, live and as a saved message | RADE measured on a computer through the same simulated channels as 700D, and a decision made | Not started. Running the downloaded code needs the owner's approval |
-| 9 | DRED recordings: record, play and send a neural format smaller than 700C | Part A: a DRED file made and played on a computer, with size and listening results. Part B: the app records, plays, exports and sends it, confirmed on the phone | Planned 2026-11-14, not started. Part A needs the owner's approval to download and run the Opus source |
+| 9 | DRED recordings: record, play and send a neural format smaller than 700C | Part A: a DRED file made and played on a computer, with size and listening results. Part B: the app records, plays, exports and sends it, confirmed on the phone | Part A measured on a computer 2026-11-14, waiting for the owner to listen. Part B not started |
 
 ### Stage 0a: project records
 
@@ -123,12 +123,56 @@ Do stage 1 (first phone test of 2.6) before building any of this into the app.
 
 Goal: a new recording format beside the Codec 2 modes. DRED is the neural speech coder inside the Opus library (BSD licence). Expected size is 1.8 to 4.8 kB per minute, against 6 kB for 700C, with a natural-sounding voice that may not sound like the speaker. The owner accepts that as long as it is legible.
 
-How it can be done with the library's public interface, checked in the Opus headers on 2026-11-14:
+#### Part A results, 2026-11-14 (`tests/dred/`)
 
-- Writing: the Opus encoder has a switch, `OPUS_SET_DRED_DURATION`, that puts up to about one second of earlier speech into every packet as DRED. A recording would keep one packet per second, or a little more often, and drop the rest.
-- Reading: `opus_dred_parse` takes the DRED out of a packet and `opus_decoder_dred_decode` turns it into sound. The player would use only these, not the normal Opus sound.
+Done on a computer with Opus 1.6.1 (`opus_1.6.1.orig.tar.xz` from the Ubuntu source pool, sha256 `001ac615b9f8f8994b229ad2b1a5969ed12ab48b0d154d0af1016a5899cd6ba1`, built with `--enable-dred`). Nothing was run on a phone. The owner has not listened yet, so there is no go or no go.
 
-Not known yet: whether the kept packets join without gaps; how uneven the sound is, since DRED codes older speech more coarsely than recent speech; the real size once the small normal Opus part of each kept packet is counted. Part A answers these.
+How the file is made. Two ways were tried:
+
+- Public interface only (normal Opus encoder with DRED on, keep one packet per second): rejected. The encoder only fills a whole second of DRED at very high bitrates. At 64 kbit/s it gave 7.5 to 8.8 kB per minute and STOI 0.68 to 0.71; at 16 to 32 kbit/s most of each second was missing.
+- DRED on its own: chosen. The test calls the library's internal DRED encoder (`dred_compute_latents`, `dred_encode_silk_frame`) once per second with one fixed quality level q (0 finest, 15 coarsest), and the player uses `dred_ec_decode`, `opus_dred_process` and `opus_decoder_dred_decode`. No normal Opus sound is stored. The Opus sources stay unchanged; our code includes two internal headers.
+
+Test speech: 8 real English voices (JFK from whisper.cpp, 7 radio amateurs from the RADE repository) and 3 Polish voices from the Piper sample set, which are synthetic. No real Polish speech was available here. 144 s in all. "Noisy" is the same speech with pink noise 10 dB below it. Codec 2 was fed the same sound cut to 8 kHz, without the app's voice chain.
+
+Two measures, neither a listening test. STOI is a standard 0 to 1 estimate of intelligibility against the clean original. "Words wrong" is what a small offline English recogniser (Vosk small en-us) gets wrong against its own transcript of the clean original, 185 words, so differences of a few points mean nothing. The recogniser is much weaker than a person: cutting the uncoded sound to 4 kHz already costs it 17%.
+
+| Coder | kB per minute, clean | kB per minute, noisy | STOI clean | STOI noisy | Words wrong, clean | Words wrong, noisy |
+|---|---|---|---|---|---|---|
+| DRED q0 | 15.6 | 13.4 | 0.88 | | 24% | 39% |
+| DRED q4 | 9.7 | 7.7 | 0.88 | 0.79 | 28% | 49% |
+| DRED q6 | 7.0 | 5.5 | 0.85 | | 35% | 61% |
+| DRED q7 | 5.8 | 4.5 | 0.86 | 0.76 | 44% | 71% |
+| DRED q9 | 3.8 | 2.7 | 0.83 | 0.73 | 52% | 74% |
+| DRED q10 | 3.1 | 2.2 | 0.80 | | 58% | 86% |
+| DRED q12 | 2.1 | 1.5 | 0.77 | 0.66 | 88% | 92% |
+| DRED q15 | 1.5 | 1.1 | 0.72 | 0.60 | 100% | 96% |
+| Codec 2 3200 | 24.0 | 24.0 | 0.84 | 0.79 | 37% | 56% |
+| Codec 2 1300 | 10.5 | 10.5 | 0.79 | 0.72 | 63% | 73% |
+| Codec 2 700C | 6.0 | 6.0 | 0.72 | 0.63 | 58% | 80% |
+| Codec 2 450 | 4.5 | 4.5 | 0.66 | 0.56 | 86% | 85% |
+
+STOI is over all 11 files where a noisy figure is given, and over the 8 English files in the other rows. DRED size depends on the sound; the table gives the mean, and single files were within about 15% of it.
+
+What this says:
+
+- At the size of 700C (about 6 kB per minute), DRED q7 scores better on both measures: 44% words wrong against 58%.
+- DRED q10 matches 700C's word score at half the size (3.1 kB per minute).
+- DRED q6 at 7 kB per minute matches Codec 2 3200 at 24 kB per minute.
+- Below about 3 kB per minute (q12, q15) the recogniser understands almost nothing, although STOI still looks fair. This is the "clean but wrong" risk: the sound has the rhythm of speech with the wrong sounds in it. Do not offer those levels.
+- Even the finest level loses a quarter of the words for this recogniser, so the neural voice itself costs something. Codec 2 3200 loses more.
+- Noise hurts DRED about as much as it hurts Codec 2. The app's denoiser was not in this test.
+
+Other checks:
+
+- Joins between the one-second blocks: the spectral error in the 40 ms around a join was 2.4 to 3.8 dB, the same or lower than elsewhere (2.7 to 3.9 dB). Blocks of 0.2 s gave the same STOI and nearly twice the size, so one second is right.
+- Level over 144 s: output 0.5 to 0.7 dB below the input at the start, middle and end. No fading.
+- Delay through coder and player: 16 ms.
+- Speed on a 2.1 GHz Xeon, one thread: coding 536 times faster than real time, playing 123 times. Not measured on a phone.
+- Size: the test program with the DRED coder and player is 2.5 MB stripped.
+- Non-speech (beeps over hiss): output 9 dB quieter than the input. Listen to it.
+- Opus 1.6.1 still marks the DRED format as experimental (version 12 in `dnn/dred_config.h`), so the limit below about format changes stands.
+
+Still open: the owner's listening test, above all on real Polish speech; speed on a phone; how DRED behaves after the app's voice chain.
 
 Known limits:
 
@@ -140,17 +184,17 @@ Known limits:
 
 #### Part A: on a computer
 
-1. Owner approves downloading and running the Opus source.
-2. Take an Opus release that includes the DRED weights (the git tree fetches them with `dnn/download_model.sh`). Record version and checksum in this file. Build it with DRED on.
-3. Write `tests/dred/`: 16 kHz speech in, DRED packets out, then DRED packets in, WAV out. No Android code.
-4. Measure bytes per minute for several settings: DRED length, packet spacing, encoder bitrate. Check the joins between kept packets.
-5. Compare with Codec 2 700C, 1300 and 3200 on the same speech: clean, noisy, Polish, English, and one non-speech sound. Legibility by a word count from a speech recogniser if one is available, and by the owner listening.
-6. Decide go or no go, and fix the settings.
+1. Owner approves downloading and running the Opus source. Done 2026-11-14.
+2. Take an Opus release that includes the DRED weights. Done: 1.6.1, checksum above.
+3. Write `tests/dred/`. Done: `dredtest.c` (coder and player), `c2rt.c` (Codec 2 for comparison), `run.py` (all measurements), `build.sh`.
+4. Measure size and check the joins. Done, results above.
+5. Compare with Codec 2. Done by STOI and by a recogniser for English. Not done: listening by the owner, real Polish speech.
+6. Decide go or no go, and fix the settings. Waiting for the owner's listening. Proposal: offer two levels, q7 ("about the size of 700C, clearer") and q4 ("about the size of 1300, clearest"), and nothing coarser than q9.
 
 #### Part B: in the app, only after a go and after stage 1
 
-1. File format `.dred`: magic bytes, format version, Opus library version, packet spacing, then packets with a length before each. Seeking goes by packet.
-2. Build `libdred.so` from unchanged Opus sources with the NDK for the three processor types, with the 16 KB page flag, and a small JNI layer like `c2jni.c`.
+1. File format `.dred`: magic bytes, format version, Opus library version and its DRED version number, quality level, then one block per second with a 2-byte length before each. Seeking goes by block, so to the second.
+2. Put the Opus 1.6.1 sources in `third_party/`, unchanged. Build `libdred.so` with the NDK for the three processor types, with the 16 KB page flag and DRED on, and a small JNI layer like `c2jni.c` built from `tests/dred/dredtest.c`.
 3. Recording: add 16 kHz capture for this format only. The confirmed 8 kHz settings in `CLAUDE.md` stay as they are for Codec 2. Decide by measurement whether the voice chain runs at 16 kHz, or whether DRED gets a lighter chain.
 4. Add "DRED" to the compression list, with its size per minute.
 5. Player: play, seek, save WAV, share. Open `.dred` files from other apps.
