@@ -6,7 +6,7 @@ Last updated: 2026-11-14
 
 Next thing to build: **stage 9, part B: DRED recordings in the app, version 2.7.** The steps are under "Part B: DRED in the app" below and are written for a session that starts cold.
 
-- The work is on branch `claude/tender-cray-gfs8aa`. `main` is older and does not have 2.5, 2.6 or this plan (stage 0a). Start the session on this branch, or bring `main` up to date first.
+- `main` holds everything up to this plan since 2026-11-14. Before stating what exists, still fetch and list all branches: newer work may sit on an unmerged branch.
 - Current delivered version: 2.6, in `dist/`. Not yet tested on a phone (stage 1).
 - The session needs the Android SDK (`bash setup.sh`) and the signing keys to deliver an APK. Without them it can still do the computer steps.
 
@@ -17,7 +17,7 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | # | Stage | Done when | State |
 |---|---|---|---|
 | 0 | Radio link built and measured on a computer (2.5, 2.6) | Files and live voice pass simulated channels | Done 2026-11-12 |
-| 0a | Project records: every session starts from the current state | `main` holds 2.6, and `CLAUDE.md` says where the project is | Proposed 2026-11-14, waiting for the owner's go-ahead |
+| 0a | Project records: every session starts from the current state | `main` holds 2.6, and `CLAUDE.md` says where the project is | `main` brought up to date 2026-11-14 on the owner's word. The `CLAUDE.md` additions and the leftover branches are still open |
 | 1 | First phone test of 2.6 | 2.6 installs over 2.4, recording behaves as in 2.4, and a short recording crosses a table from phone to phone in Robust | Waiting for the owner |
 | 2 | Fix what the phone shows | A file passes phone to phone in all three speeds; live voice is understandable both ways | Not started |
 | 3 | Through a real radio | A file and live voice pass radio to radio; live voice is heard by the FreeDV program on a PC | Not started |
