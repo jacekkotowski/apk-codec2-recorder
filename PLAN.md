@@ -174,6 +174,8 @@ Other checks:
 
 Still open: the owner's listening test, above all on real Polish speech; speed on a phone; how DRED behaves after the app's voice chain.
 
+Listening page for the owner (private link): https://claude.ai/artifact/TcpmJS1rtvv3UL88YYxxJJ. Ten-second clips of two Polish and two English voices at DRED q4, q7, q9, q12 and Codec 2 3200, 1300, 700C, two noisy cases and the non-speech sound.
+
 Known limits:
 
 - Only this app plays the files. An ordinary player ignores DRED. Sharing with others goes through export to WAV, as for `.c2`.
