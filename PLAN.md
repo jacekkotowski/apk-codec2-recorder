@@ -18,6 +18,7 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | 6 | FlatRaster over radio | The same link in apk-codec2flatraster, with a low-bitrate Radio preset | Not started |
 | 7 | Side tracks, any time | Offline transcription; RNNoise comparison; background music removal | Plans below |
 | 8 | RADE: natural-sounding voice, live and as a saved message | RADE measured on a computer through the same simulated channels as 700D, and a decision made | Not started. Running the downloaded code needs the owner's approval |
+| 9 | DRED recordings: record, play and send a neural format smaller than 700C | Part A: a DRED file made and played on a computer, with size and listening results. Part B: the app records, plays, exports and sends it, confirmed on the phone | Planned 2026-11-14, not started. Part A needs the owner's approval to download and run the Opus source |
 
 ### Stage 0a: project records
 
@@ -117,6 +118,47 @@ Possibly a better tool for small natural-sounding recordings: DRED, the speech c
 6. Decide: RADE as a third Live mode, as a "record, then send" voice message, as a recording format, or not at all. A build with RADE would need 16 kHz capture and playback added.
 
 Do stage 1 (first phone test of 2.6) before building any of this into the app.
+
+### Stage 9: DRED recordings
+
+Goal: a new recording format beside the Codec 2 modes. DRED is the neural speech coder inside the Opus library (BSD licence). Expected size is 1.8 to 4.8 kB per minute, against 6 kB for 700C, with a natural-sounding voice that may not sound like the speaker. The owner accepts that as long as it is legible.
+
+How it can be done with the library's public interface, checked in the Opus headers on 2026-11-14:
+
+- Writing: the Opus encoder has a switch, `OPUS_SET_DRED_DURATION`, that puts up to about one second of earlier speech into every packet as DRED. A recording would keep one packet per second, or a little more often, and drop the rest.
+- Reading: `opus_dred_parse` takes the DRED out of a packet and `opus_decoder_dred_decode` turns it into sound. The player would use only these, not the normal Opus sound.
+
+Not known yet: whether the kept packets join without gaps; how uneven the sound is, since DRED codes older speech more coarsely than recent speech; the real size once the small normal Opus part of each kept packet is counted. Part A answers these.
+
+Known limits:
+
+- Only this app plays the files. An ordinary player ignores DRED. Sharing with others goes through export to WAV, as for `.c2`.
+- The format is not final. The Opus 1.5 release page says its DRED will not match the standardized one. The file header must name the library version, and the app must keep that decoder for as long as such files exist.
+- DRED works on 16 kHz speech. The app records at 8 kHz and `VoiceChain` is written for 8 kHz.
+- A neural decoder can turn noise into clean-sounding but wrong speech.
+- About 2 MB more per processor type, by the Opus project's figure.
+
+#### Part A: on a computer
+
+1. Owner approves downloading and running the Opus source.
+2. Take an Opus release that includes the DRED weights (the git tree fetches them with `dnn/download_model.sh`). Record version and checksum in this file. Build it with DRED on.
+3. Write `tests/dred/`: 16 kHz speech in, DRED packets out, then DRED packets in, WAV out. No Android code.
+4. Measure bytes per minute for several settings: DRED length, packet spacing, encoder bitrate. Check the joins between kept packets.
+5. Compare with Codec 2 700C, 1300 and 3200 on the same speech: clean, noisy, Polish, English, and one non-speech sound. Legibility by a word count from a speech recogniser if one is available, and by the owner listening.
+6. Decide go or no go, and fix the settings.
+
+#### Part B: in the app, only after a go and after stage 1
+
+1. File format `.dred`: magic bytes, format version, Opus library version, packet spacing, then packets with a length before each. Seeking goes by packet.
+2. Build `libdred.so` from unchanged Opus sources with the NDK for the three processor types, with the 16 KB page flag, and a small JNI layer like `c2jni.c`.
+3. Recording: add 16 kHz capture for this format only. The confirmed 8 kHz settings in `CLAUDE.md` stay as they are for Codec 2. Decide by measurement whether the voice chain runs at 16 kHz, or whether DRED gets a lighter chain.
+4. Add "DRED" to the compression list, with its size per minute.
+5. Player: play, seek, save WAV, share. Open `.dred` files from other apps.
+6. "Compress existing audio files" can produce `.dred`.
+7. Radio link: a received `.dred` joins the recordings list like a `.c2`. The time on air shown before sending comes from the file size, as now.
+8. Tests on a computer, new version number, APK in `dist/`, then the owner's phone test.
+
+Not part of this stage: live voice with DRED. It would be a mode nobody else can decode; see the RADE stage for live voice.
 
 ## Status
 
