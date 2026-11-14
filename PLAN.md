@@ -101,12 +101,18 @@ What goes on the air is 2000 numbers per second: 3 groups of 80 values in each 1
 
 Reason to expect small sizes can work: RADE is built to survive heavy noise, and at its weakest usable signal the radio channel cannot carry more than about 1.8 kbit/s (Shannon limit for 1.5 kHz at -2 dB in 3 kHz). So a coarse copy of the values should hold what a weak-signal listener hears. How it sounds at each size has to be measured. If it holds up, this is a recording format with natural sound at roughly the size of Codec 2 2400, and it could go through the file link as an exact copy.
 
+Estimates for the coarse copies, not measured. The values are plain numbers with no fixed range (RADE V1 runs with `bottleneck = 3`, so the encoder's last layer is linear). If they are bell-shaped and the decoder treats rounding error like channel noise, the error at 1, 2 and 4 bits is 4.4, 9.3 and 20 dB below the signal. That is roughly like receiving RADE at 3, 8 and 19 dB SNR, where its floor is -2 dB.
+
+At 4 bits (60 kB per minute) Opus at 8 kbit/s is the same size, already in Android, and playable anywhere, so only 1 and 2 bits are worth having. A file is tied to one set of network weights: a V1 file needs the V1 decoder for ever.
+
+Possibly a better tool for small natural-sounding recordings: DRED, the speech coder inside Opus that RADE grew out of. It is built to produce bits, about 0.5 kbit/s by its paper (from memory, not checked), and uses the same vocoder family. Its sources are in that repository's Opus tree, but the app builds with it off because the weights are downloaded separately. Whether it can write a standalone file is not checked.
+
 #### Steps
 
 1. Owner approves running the downloaded RADE code on the computer.
 2. Build the RADE library from that repository for the computer. Check its output against the app's own test vectors if it has them.
 3. Put RADE into `tests/radio/run.py` beside 700D and 700E: the same channels, including speaker to microphone, echo and the 100 ppm clock difference.
-4. Save-as-file experiment: store the 2000 values per second at 8, 4, 2 and 1 bit, decode each, and compare with unstored RADE and with Codec 2 at the nearest size. The owner listens; a number alone will not settle it.
+4. Save-as-file experiment: store the 2000 values per second at 8, 4, 2 and 1 bit, decode each, and compare with unstored RADE and with Codec 2 at the nearest size. Include noisy speech and a non-speech sound, because a neural decoder can turn them into clean-sounding but wrong speech. Look at whether DRED can do the same job smaller. The owner listens; a number alone will not settle it.
 5. Measure decode and encode speed on the computer, then estimate for arm64 and 32-bit ARM.
 6. Decide: RADE as a third Live mode, as a "record, then send" voice message, as a recording format, or not at all. A build with RADE would need 16 kHz capture and playback added.
 
