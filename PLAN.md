@@ -1,6 +1,6 @@
 # Codec2 Recorder plan
 
-Last updated: 2026-11-12
+Last updated: 2026-11-14
 
 ## Roadmap
 
@@ -9,6 +9,7 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | # | Stage | Done when | State |
 |---|---|---|---|
 | 0 | Radio link built and measured on a computer (2.5, 2.6) | Files and live voice pass simulated channels | Done 2026-11-12 |
+| 0a | Project records: every session starts from the current state | `main` holds 2.6, and `CLAUDE.md` says where the project is | Proposed 2026-11-14, waiting for the owner's go-ahead |
 | 1 | First phone test of 2.6 | 2.6 installs over 2.4, recording behaves as in 2.4, and a short recording crosses a table from phone to phone in Robust | Waiting for the owner |
 | 2 | Fix what the phone shows | A file passes phone to phone in all three speeds; live voice is understandable both ways | Not started |
 | 3 | Through a real radio | A file and live voice pass radio to radio; live voice is heard by the FreeDV program on a PC | Not started |
@@ -16,6 +17,16 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | 5 | Two-way link | Receiver reports missing frames, sender resends only those; short text messages | Not started |
 | 6 | FlatRaster over radio | The same link in apk-codec2flatraster, with a low-bitrate Radio preset | Not started |
 | 7 | Side tracks, any time | Offline transcription; RNNoise comparison; background music removal | Plans below |
+| 8 | RADE: natural-sounding voice, live and as a saved message | RADE measured on a computer through the same simulated channels as 700D, and a decision made | Not started. Running the downloaded code needs the owner's approval |
+
+### Stage 0a: project records
+
+Why: on 2026-11-14 a session started from `main`, which held only the first import commit and a plan saying the radio transfer was "Not started". The 2.5 and 2.6 work was on an unmerged branch. The session answered from the old plan. Sessions keep no memory of earlier ones, so the files must carry the state.
+
+1. Bring `main` up to date with the 2.6 work, through a pull request or a direct push with the owner's permission.
+2. Add a "Where we are" section to `CLAUDE.md`: current version; that "radio link" means the FreeDV modems (700D, 700E, DATAC1, DATAC3, DATAC4), not HamDRM; the sister repositories (apk-codec2flatraster, Heart Sounds, apk-signing-keys).
+3. Add two rules to `CLAUDE.md`: before stating what exists in the project, fetch and list all branches, because the newest work may be unmerged; end every session by updating `PLAN.md` and getting the work into `main`.
+4. Check the two leftover branches `ccr-02a3eade-8um8m4` and `ccr-2585fd19-vajrqa` (their last commits say the work moved to other repositories), then delete them with the owner's permission.
 
 ### Stage 1: first phone test (owner)
 
@@ -58,6 +69,48 @@ Report the numbers from step 4 and what was heard in step 6.
 
 - `libfdv.so` is about 1.3 MB per processor type, mostly error-correction tables for modes the app doesn't use. Trim without editing upstream files if possible.
 - `tests/ui.py` needs Python Playwright, which the cloud sessions don't have; port it to Node like `tests/ui_radio.js`.
+- Pack recordings tightly before sending. A `.c2` file pads each frame to whole bytes (700C: 28 bits in 4 bytes, 450: 18 bits in 3 bytes), so the sent size could drop 12.5% for 700C and 25% for 450. Not built.
+- Frames are rounded up to whole bursts of four. On the 2.6 kB test in Fast this turned +50% repair into +100% (6 file frames, 12 sent). Check whether the modem allows a shorter last burst.
+
+### Stage 8: RADE
+
+RADE is the FreeDV project's newer voice mode: a neural network turns speech straight into radio symbols, and a neural vocoder (FARGAN) rebuilds it. Looked at on 2026-11-14 from the project's pages and the source of the Android app `pepefrog1234/RADE_decode_Android` (app code LGPL 2.1, RADE and Opus BSD). Nothing below was run or measured here.
+
+| | Our 700D / 700E | RADE V1 |
+|---|---|---|
+| Speech | Codec 2 700C, 4 kHz audio | Natural, 8 kHz audio |
+| Width on air | 1.1 to 1.5 kHz | 1.5 kHz |
+| Weak signal | Our simulation: 700D usable at -2 dB in noise | Published: about -2 dB |
+| Library | About 1.3 MB per processor type | 3.9 MB for arm64, the only type that app builds |
+| Speech sample rate | 8 kHz | 16 kHz in and out; the modem sound is 8 kHz like ours |
+| Files | Yes, DATAC modes with repair frames | No: it sends values, not bits, with no checksum |
+
+RADE V2 is in beta test: about 860 Hz wide and about 3 dB more sensitive by the project's simulations. The Android source already holds V2 code.
+
+Open risks: whether RADE survives the speaker-to-microphone path (that app's README says it "works, but USB audio is far more reliable"); speed on older and 32-bit phones; V1 may be replaced by V2.
+
+#### Saving RADE as a file
+
+What goes on the air is 2000 numbers per second: 3 groups of 80 values in each 120 ms modem frame. Anything that can be sent can be saved. Three ways, by size per minute of speech (700C is 6 kB):
+
+| What is saved | Size per minute | State |
+|---|---|---|
+| The modem sound as 8 kHz WAV | 960 kB | Works with existing code. Playing the file into a radio is a valid RADE transmission |
+| The 2000 values per second, at 8 bits each | 120 kB | Our own format, not built |
+| The same at 4, 2 or 1 bit each | 60, 30 or 15 kB | Our own format, not built, sound quality unknown |
+
+Reason to expect small sizes can work: RADE is built to survive heavy noise, and at its weakest usable signal the radio channel cannot carry more than about 1.8 kbit/s (Shannon limit for 1.5 kHz at -2 dB in 3 kHz). So a coarse copy of the values should hold what a weak-signal listener hears. How it sounds at each size has to be measured. If it holds up, this is a recording format with natural sound at roughly the size of Codec 2 2400, and it could go through the file link as an exact copy.
+
+#### Steps
+
+1. Owner approves running the downloaded RADE code on the computer.
+2. Build the RADE library from that repository for the computer. Check its output against the app's own test vectors if it has them.
+3. Put RADE into `tests/radio/run.py` beside 700D and 700E: the same channels, including speaker to microphone, echo and the 100 ppm clock difference.
+4. Save-as-file experiment: store the 2000 values per second at 8, 4, 2 and 1 bit, decode each, and compare with unstored RADE and with Codec 2 at the nearest size. The owner listens; a number alone will not settle it.
+5. Measure decode and encode speed on the computer, then estimate for arm64 and 32-bit ARM.
+6. Decide: RADE as a third Live mode, as a "record, then send" voice message, as a recording format, or not at all. A build with RADE would need 16 kHz capture and playback added.
+
+Do stage 1 (first phone test of 2.6) before building any of this into the app.
 
 ## Status
 
