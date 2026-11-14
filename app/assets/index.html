@@ -48,7 +48,7 @@ input[type=text]{flex:1;min-width:0;min-height:40px;font:inherit;color:var(--fg)
 [hidden]{display:none!important}
 </style></head><body>
 <div id="app">
-  <div id="tabs"><button data-t="deck" class="on">RECORD</button><button data-t="live">LIVE</button><button data-t="files">FILES</button></div>
+  <div id="tabs"><button data-t="deck" class="on">RECORD</button><button data-t="live" hidden>LIVE</button><button data-t="files">FILES</button></div>
   <div id="deck" class="deck">
     <div id="clock">00:00</div>
     <div id="size"></div>
@@ -69,7 +69,7 @@ input[type=text]{flex:1;min-width:0;min-height:40px;font:inherit;color:var(--fg)
     <div id="lst" class="big">OFF</div>
     <div class="meter"><i id="lpi"></i></div><div id="lsig" class="m"></div>
     <div id="lctl"><button id="lon">START</button><button id="ptt" disabled>TALK</button></div>
-    <label for="lmode">Mode<select id="lmode"><option value="10">FreeDV 700D (weakest signals)</option><option value="11">FreeDV 700E (fast fading)</option></select></label>
+    <label for="lmode">Mode<select id="lmode"><option value="10">FreeDV 700D (weakest signals)</option></select></label>
     <label class="sw"><input type="checkbox" id="lec"> Cancel this phone's own sound while talking</label>
     <div class="m">Tap TALK to transmit, tap again to listen. The phone's speaker goes to the radio's microphone, its microphone to the radio's speaker. Talking works best with a headset microphone, listening with earphones.</div>
   </div>
@@ -82,19 +82,20 @@ input[type=text]{flex:1;min-width:0;min-height:40px;font:inherit;color:var(--fg)
     <div class="m">SEND is on each recording below; SEND ANY FILE takes text, pictures or anything else up to 100 kB (<span id="rate"></span>). Hold the phone's speaker at the radio's microphone to send, its microphone at the radio's speaker to receive. Both sides need the same speed.</div>
   </div>
   <div id="msg" role="status"></div>
-  <div id="bar"><span id="count"></span><span class="btns"><button id="cmp">COMPRESS AUDIO</button> <button id="imp">OPEN .C2</button></span></div>
+  <div id="bar"><span id="count"></span><span class="btns"><button id="cmp">COMPRESS AUDIO</button> <button id="imp">OPEN .DRED</button></span></div>
   <div id="cbar" hidden><div class="meter"><i id="cpi"></i></div><span id="cpt" class="m"></span><button id="ccan">CANCEL</button></div>
   <div id="list"></div>
 </div>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
-const MODES = [["450",4.5,"smallest, experimental"],["700C",6,"best balance"],["1200",9,""],["1300",10.5,""],["1400",10.5,""],["1600",12,""],["2400",18,""],["3200",24,"best quality"]];
-for (const [n, k, d] of MODES) {
+// DRED levels: name sent to the app, about kB per minute of speech (measured on a computer), note.
+const MODES = [["best",10],["balanced",6],["small",4],["smallest",2]];
+for (const [n, k] of MODES) {
   const o = document.createElement("option"); o.value = n;
-  o.textContent = n + ", " + k + " kB/min" + (d ? ", " + d : ""); $("mode").appendChild(o);
+  o.textContent = "DRED " + n + ", " + k + " kB/min"; $("mode").appendChild(o);
 }
-let mode = "700C"; try { mode = localStorage.getItem("mode") || mode; } catch (e) {}
+let mode = "small"; try { const m = localStorage.getItem("mode"); if (MODES.some(x => x[0] === m)) mode = m; } catch (e) {} // a Codec 2 mode stored by 2.6 falls back to the default
 $("mode").value = mode;
 $("mode").addEventListener("change", e => { mode = e.target.value; try { localStorage.setItem("mode", mode); } catch (x) {} });
 const A = window.Android;
@@ -129,11 +130,23 @@ let open = null, confirmDel = null, renaming = null, items = [], was = { rec: fa
 
 function row(r, st) {
   const d = document.createElement("div"); d.className = "r";
-  const n = document.createElement("div"); n.className = "n"; n.textContent = r.name.replace(/\.c2$/, "");
-  const m = document.createElement("div"); m.className = "m"; m.textContent = r.mode + " · " + fmt(r.secs) + " · " + kb(r.bytes);
+  const n = document.createElement("div"); n.className = "n"; n.textContent = r.name.replace(/\.(dred|c2)$/, "");
+  const m = document.createElement("div"); m.className = "m"; m.textContent = r.old ? r.mode + " · " + kb(r.bytes) : r.mode + " · " + fmt(r.secs) + " · " + kb(r.bytes);
   d.append(n, m);
-  const a = document.createElement("div"); a.className = "a";
   const btn = (t, f, c) => { const b = document.createElement("button"); b.textContent = t; if (c) b.className = c; b.addEventListener("click", f); return b; };
+  if (r.old) { // a Codec 2 file from 2.6 or older: kept and listed, but this version can't play it
+    const w = document.createElement("div"); w.className = "m"; w.textContent = "Made by an older version, can't be played here. To keep it, open it in version 2.6 and save it as WAV.";
+    const a = document.createElement("div"); a.className = "a";
+    a.append(btn("SHARE", () => A.share(r.name)), btn("DELETE", () => { confirmDel = r.name; render(); }, "danger"));
+    d.append(w, a);
+    if (confirmDel === r.name) {
+      const y = document.createElement("div"); y.className = "a";
+      y.append(btn("YES, DELETE FOREVER", () => { A.remove(r.name); confirmDel = null; refresh(); }, "danger"), btn("CANCEL", () => { confirmDel = null; render(); }));
+      d.append(y);
+    }
+    return d;
+  }
+  const a = document.createElement("div"); a.className = "a";
   const playing = st.play === r.name;
   a.append(btn(playing ? "STOP" : "PLAY", () => { playing ? A.stopPlay() : A.play(r.name); }, "pl"));
   if (tab === "files") a.append(btn("SEND " + fmt(est(r)), () => { say(""); A.radioSend(r.name, +$("rmode").value, Math.max(0, +$("rex").value), +$("rex").value < 0); }));
@@ -148,11 +161,11 @@ function row(r, st) {
   }
   if (open === r.name) {
     const x = document.createElement("div"); x.className = "a";
-    x.append(btn("SHARE", () => A.share(r.name)), btn("SAVE .C2", () => A.saveC2(r.name)), btn("SAVE WAV", () => A.saveWav(r.name)), btn("RENAME", () => { renaming = r.name; render(); }), btn("DELETE", () => { confirmDel = r.name; render(); }, "danger"));
+    x.append(btn("SHARE", () => A.share(r.name)), btn("SAVE .DRED", () => A.saveFile(r.name)), btn("SAVE WAV", () => A.saveWav(r.name)), btn("RENAME", () => { renaming = r.name; render(); }), btn("DELETE", () => { confirmDel = r.name; render(); }, "danger"));
     d.append(x);
     if (renaming === r.name) {
       const y = document.createElement("div"); y.className = "a";
-      const i = document.createElement("input"); i.type = "text"; i.id = "newname"; i.setAttribute("aria-label", "New name"); i.value = r.name.replace(/\.c2$/, "");
+      const i = document.createElement("input"); i.type = "text"; i.id = "newname"; i.setAttribute("aria-label", "New name"); i.value = r.name.replace(/\.dred$/, "");
       y.append(i, btn("SAVE", () => { if (A.rename(r.name, i.value)) { renaming = null; open = null; refresh(); } else say("That name can't be used."); }));
       d.append(y);
     }

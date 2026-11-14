@@ -8,8 +8,6 @@ out/
 *.idsig
 *.class
 tests/**/pl/
-tests/t4/rt
-tests/c2test
 # test output
 *.raw
 *.wav
@@ -20,7 +18,7 @@ tests/radio/out/
 env.sh
 !dist/*.apk
 tests/dred/dredtest
-tests/dred/c2rt
 tests/dred/out/
 tests/dred/fdvpipe
 tests/dred/obj/
+tests/t6/out/

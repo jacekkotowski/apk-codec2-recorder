@@ -111,10 +111,12 @@ public class RadioService extends Service {
     /** A received recording joins the others in the app. Any other file goes to Download/Codec2Recorder, where the phone's Files app shows it. */
     private String save(String name, byte[] data) throws Exception {
         String clean = new File(name).getName().replaceAll("[^\\p{L}\\p{N} _.-]", "_"); if (clean.isEmpty()) clean = "received";
-        if (data.length >= C2.HEADER && C2.modeFromHeader(data) >= 0) {
+        boolean recording;
+        try { Dred.readHeader(data); recording = true; } catch (Dred.BadFile e) { recording = false; }
+        if (recording) {
             String base = clean.replaceAll("\\.[^.]*$", ""); File d = MainActivity.dir(this);
-            File out = new File(d, "rx_" + base + ".c2");
-            for (int k = 2; out.exists(); k++) out = new File(d, "rx_" + base + "_" + k + ".c2");
+            File out = new File(d, "rx_" + base + ".dred");
+            for (int k = 2; out.exists(); k++) out = new File(d, "rx_" + base + "_" + k + ".dred");
             try (FileOutputStream o = new FileOutputStream(out)) { o.write(data); }
             return "Received " + out.getName();
         }
@@ -123,16 +125,16 @@ public class RadioService extends Service {
         return "Received rx_" + clean + " (" + data.length + " bytes). Saved to Download/Codec2Recorder.";
     }
 
-    /** Live voice, one direction at a time. Listening decodes the radio's sound; talking sends the microphone through the voice chain and the modem. */
+    /** Live voice, one direction at a time. Hidden in 2.7: it still sends Codec 2 voice inside the FreeDV modem, at 8 kHz, and moves to DRED in 2.8 (PLAN.md stage 9, part C). Listening decodes the radio's sound; talking sends the microphone through the voice chain and the modem. */
     private void live(Intent a) throws Exception {
         long h = Radio.open(a.getIntExtra("mode", 10), 1);
         if (h == 0) throw new IllegalStateException("the modem did not start");
         final int ns = Radio.speechN(h), nm = Radio.modemN(h), cf = 320;
         final int voiceSource = a.getBooleanExtra("echo", false) ? MediaRecorder.AudioSource.VOICE_COMMUNICATION : a.getIntExtra("source", MediaRecorder.AudioSource.VOICE_RECOGNITION);
-        VoiceChain chain = new VoiceChain(cf, a.getBooleanExtra("denoise", true), a.getDoubleExtra("floor", 0.18), a.getIntExtra("treble", 1), MainActivity.loadNoise(this), a.getIntExtra("rumble", 180), a.getDoubleExtra("lift", 6), a.getDoubleExtra("gate", 12), a.getDoubleExtra("comp", 3));
+        VoiceChain chain = new VoiceChain(8000, VoiceChain.CEILING_C2, cf, a.getBooleanExtra("denoise", true), a.getDoubleExtra("floor", 0.18), a.getIntExtra("treble", 1), MainActivity.loadNoise(this, 8000), a.getIntExtra("rumble", 180), a.getDoubleExtra("lift", 6), a.getDoubleExtra("gate", 12), a.getDoubleExtra("comp", 3));
         AudioTrack t = track(); AudioRecord rec = null; android.media.audiofx.AcousticEchoCanceler aec = null;
         short[] sp = new short[ns], mod = new short[nm], part = new short[cf], in = new short[640], out = new short[8 * ns];
-        Limiter lim = new Limiter(31000, 64);
+        Limiter lim = new Limiter(31000, 64, 8000);
         try {
             boolean talking = !talk; // forces the microphone to open on the first pass
             while (running) {

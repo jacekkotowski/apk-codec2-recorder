@@ -27,7 +27,8 @@ public class RecService extends Service {
     static volatile double holdSeconds = 1;
     static volatile String routed = "";
     static volatile float level;
-    static volatile long frames, bytesWritten;
+    static volatile long bytesWritten;
+    static volatile double secs;
     static volatile int frameMs;
     static volatile String file, error;
     private static final String CH = "rec";
@@ -49,10 +50,10 @@ public class RecService extends Service {
         try {
             startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
         } catch (Exception e) { error = "Can't record in the background: " + e.getMessage(); stopSelf(); return START_NOT_STICKY; }
-        final int mode = in.getIntExtra("mode", 8); final boolean dn = in.getBooleanExtra("denoise", false), va = in.getBooleanExtra("vad", false); final int source = in.getIntExtra("source", MediaRecorder.AudioSource.VOICE_RECOGNITION), device = in.getIntExtra("device", 0), treble = in.getIntExtra("treble", 1); final double strength = in.getDoubleExtra("floor", 0.18), lift = in.getDoubleExtra("lift", 6), gate = in.getDoubleExtra("gate", 12), comp = in.getDoubleExtra("comp", 3); final int rumble = in.getIntExtra("rumble", 180);
+        final int q = in.getIntExtra("q", Dred.DEFAULT_Q); final boolean dn = in.getBooleanExtra("denoise", false), va = in.getBooleanExtra("vad", false); final int source = in.getIntExtra("source", MediaRecorder.AudioSource.VOICE_RECOGNITION), device = in.getIntExtra("device", 0), treble = in.getIntExtra("treble", 1); final double strength = in.getDoubleExtra("floor", 0.18), lift = in.getDoubleExtra("lift", 6), gate = in.getDoubleExtra("gate", 12), comp = in.getDoubleExtra("comp", 3); final int rumble = in.getIntExtra("rumble", 180);
         final String path = in.getStringExtra("path");
-        file = path; error = null; running = true; paused = false; frames = 0; bytesWritten = 0; level = 0;
-        waiting = false; thread = new Thread(() -> loop(mode, path, dn, va, source, device, treble, strength, rumble, lift, gate, comp), "rec");
+        file = path; error = null; running = true; paused = false; secs = 0; bytesWritten = 0; level = 0;
+        waiting = false; thread = DredLib.thread(() -> loop(q, path, dn, va, source, device, treble, strength, rumble, lift, gate, comp), "rec");
         thread.start();
         return START_NOT_STICKY;
     }
@@ -97,60 +98,45 @@ public class RecService extends Service {
         return d.getType() == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO || (Build.VERSION.SDK_INT >= 31 && d.getType() == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET);
     }
 
-    private void loop(int mode, String path, boolean denoise, boolean voiceOnly, int source, int device, int treble, double strength, int rumble, double lift, double gate, double comp) {
-        long h = 0; AudioRecord rec = null; android.media.AudioDeviceInfo target = null;
+    private void loop(int q, String path, boolean denoise, boolean voiceOnly, int source, int device, int treble, double strength, int rumble, double lift, double gate, double comp) {
+        AudioRecord rec = null; android.media.AudioDeviceInfo target = null; Recorder r = null;
         try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(new File(path)))) {
-            h = C2.create(mode);
-            if (h == 0) throw new IllegalStateException("the codec did not start");
-            int n = C2.samples(h), nb = C2.bytes(h);
-            frameMs = n / 8;
-            int min = AudioRecord.getMinBufferSize(8000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+            final int n = Recorder.CHUNK, fs = Dred.FS;
+            frameMs = n * 1000 / fs;
+            int min = AudioRecord.getMinBufferSize(fs, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
             target = device != 0 ? route(this, device) : null;
             int src = target != null && isBluetooth(target) && callRouted ? MediaRecorder.AudioSource.VOICE_COMMUNICATION : source; // if the call route failed, use the plain route
-            rec = new AudioRecord(src, 8000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, Math.max(min, 16000));
+            rec = new AudioRecord(src, fs, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, Math.max(min, 2 * fs));
             if (rec.getState() != AudioRecord.STATE_INITIALIZED) throw new IllegalStateException("the microphone did not start");
             if (target != null) rec.setPreferredDevice(target);
-            if (mode == 8) C2.eq(h, true); // Codec 2's own equaliser for 700C adapts to the microphone's response
-            out.write(C2.header(mode)); bytesWritten = C2.HEADER;
+            VoiceChain chain = new VoiceChain(fs, VoiceChain.CEILING_DRED, n, denoise, strength, treble, MainActivity.loadNoise(this, fs), rumble, lift, gate, comp);
+            r = new Recorder(out, q, voiceOnly, chain); bytesWritten = r.bytes;
             rec.startRecording();
             android.media.AudioDeviceInfo rd = rec.getRoutedDevice();
             routed = rd == null ? "" : MainActivity.micName(rd);
-            short[] pcm = new short[n]; byte[] bits = new byte[nb];
-            VoiceChain chain = new VoiceChain(n, denoise, strength, treble, MainActivity.loadNoise(this), rumble, lift, gate, comp);
-            // Keep about 400 ms of encoded audio so the start of a word is not cut by voice activation.
-            int preN = Math.max(1, 400 / frameMs), preW = 0, preC = 0; byte[][] pre = new byte[preN][nb];
-            int sinceFlush = 0; boolean wasOpen = false; long silentFrames = 0; boolean warned = false, clipWarned = false;
+            short[] pcm = new short[n];
+            long silentFrames = 0; boolean warned = false, clipWarned = false;
             while (running) {
                 int got = 0;
-                while (got < n && running) { int r = rec.read(pcm, got, n - got); if (r < 0) throw new IllegalStateException("read error " + r); got += r; }
+                while (got < n && running) { int k = rec.read(pcm, got, n - got); if (k < 0) throw new IllegalStateException("read error " + k); got += k; }
                 if (got < n) break;
-                if (paused) { level = 0; waiting = false; continue; }
+                if (paused) { level = 0; waiting = false; continue; } // nothing reaches the coder while paused
                 boolean allZero = true; for (short v : pcm) if (Math.abs(v) > 1) { allZero = false; break; }
                 if (allZero) { if (!warned && ++silentFrames * frameMs > 3000) { warned = true; notice = "No sound from this microphone. Try another one, or switch the headset off and on."; } } else silentFrames = 0;
                 if (sampleReq) { sampleReq = false; sampling = true; chain.den.startSample(2); }
-                boolean voice = chain.process(pcm, gainDbLive, sensitivity, holdSeconds);
+                r.chunk(pcm, gainDbLive, sensitivity, holdSeconds);
                 if (sampling && !chain.den.sampling()) { sampling = false; MainActivity.saveNoise(this, chain.den.profile()); notice = "Noise sample saved"; }
                 if (chain.inputClipped && !clipWarned) { clipWarned = true; notice = "The microphone itself is overloading before the app receives the sound. Move it further away or try another audio source."; }
                 vadMeter = (float) chain.meter; gainNow = (float) chain.currentGain; level = (float) chain.level; if (chain.frameClipped) clipUntil = System.currentTimeMillis() + 1000;
-                C2.encode(h, pcm, bits);
-                boolean open = !voiceOnly || voice;
-                waiting = voiceOnly && !voice;
-                if (open) {
-                    if (!wasOpen) { for (int k = preC; k > 0; k--) { out.write(pre[(preW - k + preN) % preN]); frames++; bytesWritten += nb; } preC = 0; }
-                    out.write(bits); frames++; bytesWritten += nb;
-                    if (++sinceFlush * frameMs >= 1000) { out.flush(); sinceFlush = 0; }
-                } else {
-                    System.arraycopy(bits, 0, pre[preW], 0, nb); preW = (preW + 1) % preN; if (preC < preN) preC++;
-                }
-                wasOpen = open;
+                waiting = r.waiting; secs = r.seconds(); bytesWritten = r.bytes;
             }
-            out.flush();
+            r.finish(); secs = r.seconds(); bytesWritten = r.bytes;
         } catch (Exception e) {
             error = "Recording stopped: " + e.getMessage();
         } finally {
             if (rec != null) { try { rec.stop(); } catch (Exception ignored) {} rec.release(); }
             try { unroute(this, target); } catch (Exception ignored) {}
-            if (h != 0) C2.destroy(h);
+            if (r != null) r.close();
             running = false; level = 0; waiting = false; sampling = false;
             stopForeground(STOP_FOREGROUND_REMOVE); stopSelf();
         }

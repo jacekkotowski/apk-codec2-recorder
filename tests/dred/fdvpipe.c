@@ -3,7 +3,7 @@
    Build from the project folder:
      . ./fdvflags.sh; gcc -O2 -DNDEBUG $FDVFLAGS -Ithird_party/codec2-1.2/src -Ithird_party/codec2-1.2/generated \
        -o tests/dred/fdvpipe tests/dred/fdvpipe.c third_party/codec2-1.2/src/*.c third_party/codec2-1.2/generated/*.c -lm
-   Run: tests/dred/fdvpipe 700D|700E [SNR_dB in 3 kHz, default none] */
+   Run: tests/dred/fdvpipe 700D [SNR_dB in 3 kHz, default none]. 700E was tried on 2026-11-14 and passed nothing; it is no longer built (fdvflags.sh). */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

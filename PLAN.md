@@ -1,15 +1,28 @@
 # Codec2 Recorder plan
 
-Last updated: 2026-11-14
+Last updated: 2026-11-14 (part B built)
 
 ## Start here
 
-Next thing to build: **stage 9, part B: DRED replaces Codec 2 in the app, version 2.7.** The steps are under "Part B" below and are written for a session that starts cold. After it, part C: live voice with DRED over the FreeDV modem (2.8).
+**Waiting for the owner: phone test of the 2.7 test build** (`dist/Codec2Recorder-2.7-test1.apk`, the app "Recorder test", package `pl.dyktafon.test`). It installs beside 2.6 and keeps its own recordings. DRED replaces Codec 2 in it (stage 9, part B, built 2026-11-14). Everything that touches Android audio is untested: recording, playback, saving WAV, compressing files, radio sending of `.dred`.
 
-Owner's decisions on 2026-11-14: Codec 2 is removed from the app completely, including opening old `.c2` files; live voice moves to DRED. Read "Owner's decisions" in stage 9 before changing anything.
+Phone test list (stage 9, part B, step 10):
 
-- `main` holds everything up to this plan since 2026-11-14. Before stating what exists, still fetch and list all branches: newer work may sit on an unmerged branch.
-- Current delivered version: 2.6, in `dist/`. Not yet tested on a phone (stage 1).
+1. The test build installs beside 2.6 and both work.
+2. Record 30 s of Polish at each level (best, balanced, small, smallest), with and without Denoise and Voice activation. Play, seek, pause.
+3. Does playback stutter? On which phone? (Speed on a phone, above all a 32-bit one, is not measured. On a computer one second decodes in 31 ms.)
+4. Is the recording level right: not quiet, not distorted? Does the level bar behave? (The ceiling moved from 11000 to 18000 and playback is raised twice, not 3.5 times; see part B results.)
+5. Save WAV, share, rename, delete. How long does SAVE WAV take for a 10-minute recording? (No progress is shown.)
+6. Recording with the screen off for ten minutes.
+7. Compress an existing audio file (COMPRESS AUDIO), for example a WhatsApp voice note.
+8. Send a recording phone to phone in Robust; it should join the list on the other phone and play. (Both phones need the test build.)
+9. Which level would you use every day? Is q12 (smallest) still good on your own voice?
+10. With Denoise on and the default settings, does speech sound processed or pumping? On a computer the automatic level costs intelligibility with DRED (part B results); if you hear it, try SETTINGS: Rec level off auto, Compressor off.
+
+After the owner's go: the real build, `versionCode` 18, version name 2.7, in `dist/` in place of 2.6 (`bash build.sh`, part B step 8). Then stage 10, then part C: live voice with DRED over the FreeDV modem (2.8).
+
+- `main` holds everything up to the DRED plan of 2026-11-14. The 2.7 work is on branch `claude/modest-noether-2xx3jl` until merged. Before stating what exists, still fetch and list all branches: newer work may sit on an unmerged branch.
+- Current release: 2.6, in `dist/`. Not yet tested on a phone (stage 1). The 2.7 test build is in `dist/` beside it.
 - The session needs the Android SDK (`bash setup.sh`) and the signing keys to deliver an APK. Without them it can still do the computer steps.
 
 ## Roadmap
@@ -28,7 +41,7 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | 6 | FlatRaster over radio | The same link in apk-codec2flatraster, with a low-bitrate Radio preset | Not started |
 | 7 | Side tracks, any time | Offline transcription; RNNoise comparison; background music removal | Plans below |
 | 8 | RADE: natural-sounding voice, live and as a saved message | RADE measured on a computer through the same simulated channels as 700D, and a decision made | Not started. Running the downloaded code needs the owner's approval |
-| 9 | DRED replaces Codec 2: recordings (2.7), then live voice (2.8) | Part A: measured on a computer. Part B: the app records, plays, exports and sends `.dred`, and Codec 2 is gone. Part C: live voice with DRED through the FreeDV 700D modem | Part A done 2026-11-14 and the owner said go. Part B is the next thing to build. Part C: the modem was shown to carry bytes on a computer; nothing built |
+| 9 | DRED replaces Codec 2: recordings (2.7), then live voice (2.8) | Part A: measured on a computer. Part B: the app records, plays, exports and sends `.dred`, and Codec 2 is gone. Part C: live voice with DRED through the FreeDV 700D modem | Part A done 2026-11-14 and the owner said go. Part B built and checked on a computer 2026-11-14, test build 2.7-test1 waiting for the phone test. Part C: the modem was shown to carry bytes on a computer; nothing built |
 | 10 | After 2.7 is confirmed on the phone | DRED settings written into `CLAUDE.md`; app name decided | Not started |
 
 ### Stage 0a: project records
@@ -336,6 +349,44 @@ Risks to watch:
 - A neural player can produce clean-sounding wrong words when the input is noisy. Keep the denoiser measurement in step 5.
 - With Codec 2 gone there is no second format to fall back on. That is why the test build comes first.
 
+#### Part B results, 2026-11-14
+
+Built: 2.7-test1, `dist/Codec2Recorder-2.7-test1.apk` (package `pl.dyktafon.test`, "Recorder test"). Nothing was run on a phone. All checks below are on a computer (2.1 GHz Xeon, x86_64).
+
+| Step | What was done | Check |
+|---|---|---|
+| 1 | `third_party/opus-1.6.1`: `include`, `celt`, `silk`, `src`, `dnn/*.c`, `dnn/*.h`, the `*_sources.mk` files, `COPYING`. Left out the folders and weights the plan lists, and `celt/tests`, `silk/tests`. 12 MB. `COPYING-opus`, licence line in `README.md` | `tests/dred/build.sh` builds from this folder |
+| 2 | `opusflags.sh`: the flags from the plan and the 158 files read from the `.mk` files | `run.py` on 8 English files (no Polish speech could be fetched): kB per minute 10.0, 6.0, 3.8, 2.2 at q4, 7, 9, 12; STOI 0.87, 0.84, 0.81, 0.75. Close to part A |
+| 3 | `Dred.java`: header, `readHeader`, block index; a block cut short at the end is left out, so a recording survives the phone dying | `tests/t6/DT.java`: round trip, seek, cut-off file, wrong magic, unknown format and bitstream version, damaged header and block, old `.c2` |
+| 4 | `app/jni/dredjni.c`, `DredLib.java` (coder with the end-of-recording flush, player). `libdred.so` in `build.sh` for the three processor types: 2.4 to 2.5 MB each. NEON is on for both ARM types by default | `tests/dred/JT.java`: the JNI library gives byte-identical blocks and identical sound to `dredtest` at q4, q9, q12 |
+| 5 | `VoiceChain`, `Denoiser`, `Limiter`, `Compressor` take the sample rate: same corners and time constants as 2.4, so at 8 kHz they are the 2.4 chain (live voice still uses that). Denoiser window 512 at 16 kHz, so the same 31 Hz bands. Chain frames 40 ms, as 700C had. `Recorder.java`: chain, voice activation gating sound with 400 ms of sound as pre-roll, coder, file; used by `RecService` and file compression. `Resampler` rewritten for any rate up or down. The 8 kHz noise sample from 2.6 is deleted at start | `tests/dred/RS.java` (resampler), `RP.java` (recording path without Android) and `chain.py`, below |
+| 6 | `MainActivity`, `RadioService`: play at 16 kHz with a 2 s buffer (one block ahead), seek by the second, list with level and length from the header (cached), save WAV streamed, save `.dred`, import by header, compress to DRED. `.c2` files listed as "Made by an older version" with share and delete only; playing or importing one gives a sentence about 2.6. A received file with a DRED header joins the list. Removed `C2.java`, `c2jni.c`, `third_party/codec2`, `tests/c2test.c`, `tests/t`, `t2`, `t3`, `t4` (8 kHz chain and Codec 2 experiments that no longer compiled), `tests/dred/c2rt.c`. 700E out of `fdvflags.sh`. `COPYING-codec2` stays for the modem | `node tests/ui_radio.js` passes; `tests/radio/run.py` files part: the same as in 2.6 in every row, except HF fading at 0 dB in Very robust, 2 of 3 against 1 of 3 (run to run variation; the data modes were not changed), and nothing decoded from 10 minutes of noise; `grep -ri codec2 app/` finds only the modem, the app name and the old-file handling |
+| 7 | Page: four DRED levels, default small; a stored Codec 2 mode falls back; Live tab hidden; OPEN .DRED, SAVE .DRED | `ui_radio.js` |
+| 8 | `bash build.sh test`: package `pl.dyktafon.test`, provider `pl.dyktafon.test.files`, label "Recorder test", version name 2.7-test1. Manifest raised to `versionCode` 18, 2.7 for the real build. `README.md`, `CLAUDE.md` | Built and signed with the real key; installs beside 2.6 by package name (not tried on a phone) |
+| 9 | Computer checks | Below |
+
+The recording path, `tests/dred/chain.py`, DRED q9, 8 English files with one second of background before and after. STOI against the clean original:
+
+| Input | DRED alone | Recording path, Denoise off | Recording path, Denoise on |
+|---|---|---|---|
+| Clean | 0.81 | 0.72 | 0.72 |
+| Clean, 20 dB quieter | 0.80 | 0.74 | 0.76 |
+| Pink noise 10 dB below the speech | 0.70 | 0.67 | 0.69 |
+| The same, 20 dB quieter | 0.70 | 0.69 | 0.71 |
+| White noise 5 dB below the speech | 0.62 | 0.59 | 0.62 |
+
+- The denoiser helps a little in noise and never hurts. Noise still costs DRED a lot, as in part A.
+- The chain itself costs about 0.08 on clean speech. Switching parts off one at a time (clean input, Denoise off): all defaults 0.71; treble off 0.73; lift off 0.72; compressor off 0.74; gate off 0.72; rumble cut at 40 Hz 0.72; all of them off 0.76; all off with fixed gain instead of automatic level 0.81. So the largest single cost is the automatic level, which follows syllable peaks (fall 0.4 per 40 ms frame, rise 0.04). These are the settings confirmed on the phone in 2.4 for Codec 2, so they were kept. STOI against the clean original also counts intended changes (treble, compression) as loss; it is not a listening test. Decide after the owner has listened (phone test item 10). A gentler automatic level is the first thing to try if the owner hears pumping.
+- Levels: with the limiter ceiling at 22000 (the plan's starting point) and at 20000, one onset in 80 recordings came out of the decoder at 1.5 times the ceiling and hit full scale. At 18000 none did; the highest decoded peak was 1.26 times the ceiling (22714), the median 0.95. So the DRED ceiling is 18000. Speech then sits at about -26 dBFS, so playback and SAVE WAV raise it twice (+6 dB) through the same look-ahead limiter 2.4 used at 3.5 times.
+
+Step 9 checks:
+
+- Another build: a `dredtest` built with `-O3 -march=native` (AVX2) makes different bytes (float rounding) but its files play on the app's build and the other way round with the same STOI (0.84 and 0.84, 0.64 and 0.64 on three files). Not tried: ARM builds, which need a phone.
+- A 30-minute recording through the recording path (`RP.java`, 32 MB Java heap, input streamed): 1801 s coded from 1800 s (the last block is filled out on stop), 123 kB, 4.1 kB per minute; with voice activation 1684 s. No growth in memory. The chain and coder ran 121 times faster than real time.
+- Speed with the app's generic flags, 30 minutes through the JNI library: coding 231 times faster than real time, playing 32 times (31 ms per one-second block). The autotools build in part A played 123 times faster because it adds AVX2 code for x86; on ARM the generic build already uses NEON. A phone core several times slower should still keep up; a slow 32-bit phone is the risk. SAVE WAV of 30 minutes on such a phone could take minutes, with no progress bar.
+
+Not done in part B: real Polish speech (no source could be fetched), anything on a phone or on ARM, the "open with" route (the app has no such intent filter; only OPEN .DRED), and Vosk word counts (model not available here).
+
 #### Part C: live voice with DRED over the FreeDV modem (version 2.8)
 
 The owner asked whether the FreeDV modem can send DRED live. On a computer, yes. Tried on 2026-11-14 with `tests/dred/fdvpipe.c`: random bytes in place of Codec 2 voice through the 700D modem of `libfdv`, white noise added, SNR in 3 kHz.
@@ -378,23 +429,23 @@ On the air this is a mode no other program decodes. Publish its description in t
 
 | Part | State |
 |---|---|
-| Record, pause, play, seek, rename, delete | Built, not yet confirmed on Android |
-| All Codec 2 modes from 3200 down to 450 | Encode and decode tested on a computer |
+| Record, pause, play, seek, rename, delete | DRED in 2.7-test1: built, not yet run on Android |
+| Codec 2 modes from 3200 down to 450 | Removed in 2.7. `.c2` files are listed but not played |
 | Recording with the screen off | Built, not yet confirmed on Android |
-| Share, save .c2, save WAV, open .c2 | Built, not yet confirmed on Android |
+| Share, save .dred, save WAV at 16 kHz, open .dred | Built in 2.7-test1, not yet run on Android |
 | Denoise, noise sample, continuous adaptation | Tested on synthetic speech with added noise |
 | Voice activation with 400 ms pre-roll | Tested on synthetic speech with added noise |
 | Microphone choice, rec level, audio source, treble boost, voice sensitivity and hold, denoise strength | Built, waiting for phone test |
 | RNNoise comparison | Blocked: running downloaded code needs the user's approval. Watch for cut word endings |
-| Compress existing audio files through the voice path | Built, waiting for phone test |
+| Compress existing audio files through the voice path | DRED, any source rate through the new resampler (tested on a computer with tones), waiting for phone test |
 | Rumble cut and consonant lift | Measured on synthetic speech, waiting for phone test |
 | Look-ahead limiter and noise gate | Measured on synthetic speech, waiting for phone test |
 | Bluetooth microphones | Built, not tested: no Bluetooth headset available in testing |
 | Remove background music | Not started, plan below |
 | Radio: sending and receiving recordings as files, with repair frames (2.5) | Modem and transport tested on a computer through simulated channels. Android audio part built, not run anywhere |
-| Radio: live voice, FreeDV 700D and 700E (2.5) | Modem tested on a computer. Android part built, not run anywhere |
+| Radio: live voice, FreeDV 700D (2.5) | Modem tested on a computer. Android part built, not run anywhere. Hidden in 2.7; 700E no longer built |
 | Record, Live and Files tabs (2.5) | Page tested against a stub of the app, not on a phone |
-| DRED recordings (stage 9) | Coder, player and comparison with Codec 2 measured on a computer in `tests/dred/`. Nothing in the app yet |
+| DRED recordings (stage 9) | In the app from 2.7-test1. Format, JNI library, recording path, resampler, levels, 30-minute run and cross-build playback checked on a computer. Nothing run on a phone |
 | Offline transcription, Polish and English | Not started, plan below |
 
 ## Radio link: what was built and measured

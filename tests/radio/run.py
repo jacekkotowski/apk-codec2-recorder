@@ -49,12 +49,12 @@ if len(sys.argv) > 1:
             if n > 50: best = max(best, np.corrcoef(x[:n], y[:n])[0, 1])
         return best
     print('\n## Live voice: time in sync, and how well the decoded loudness contour matches the clean-channel decode (1.00 = same)\n')
-    print('| Channel | 700D | 700E |'); print('|---|---|---|')
+    print('| Channel | 700D |'); print('|---|---|')
     VC = [('Clean', []), ('Noise, SNR 5 dB', ['--snr', 5]), ('Noise, SNR 2 dB', ['--snr', 2]), ('Noise, SNR 0 dB', ['--snr', 0]), ('Noise, SNR -2 dB', ['--snr', -2]), ('HF fading, SNR 5 dB', ['--fade', '--snr', 5]),
           ('Speaker to mic, close, distorted, clocks 100 ppm apart, SNR 15 dB', ['--room', 10, '--clip', 2, '--ppm', 100, '--snr', 15]), ('Speaker to mic, echo 5 dB below direct, SNR 10 dB', ['--room', 5, '--snr', 10]),
           ('Speaker to mic, close, with the decoded voice leaking into the mic 6 dB below the signal', ['--room', 10, '--speech', sys.argv[1], -6])]
     res = {c[0]: [] for c in VC}
-    for m in (10, 11):
+    for m in (10,):  # 700E is no longer built (fdvflags.sh)
         run(*J, 'vtx', str(m), sys.argv[1], 'v.raw'); ref = None
         for name, o in VC:
             chan('v.raw', *o); r = run(*J, 'vrx', str(m), 'c.raw', 'o.raw'); e = env(np.fromfile('o.raw', dtype='<i2'))

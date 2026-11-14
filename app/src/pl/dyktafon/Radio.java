@@ -3,7 +3,7 @@ package pl.dyktafon;
 /** FreeDV modems from Codec 2 1.2 (app/jni/fdvjni.c). All audio is 8 kHz, 16 bit, mono. */
 final class Radio {
     static { System.loadLibrary("fdv"); }
-    /** Modes: 0 fast, 1 robust, 2 very robust (files); 10 FreeDV 700D, 11 FreeDV 700E (live voice). */
+    /** Modes: 0 fast, 1 robust, 2 very robust (files); 10 FreeDV 700D (live voice). 11, FreeDV 700E, is no longer built in (fdvflags.sh). */
     static native long open(int mode, int framesPerBurst);
     static native void close(long h);
     // Files
