@@ -22,3 +22,4 @@ env.sh
 tests/dred/dredtest
 tests/dred/c2rt
 tests/dred/out/
+tests/dred/fdvpipe
