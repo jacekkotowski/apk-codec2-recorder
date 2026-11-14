@@ -3,8 +3,9 @@
 
   python3 tests/dred/run.py SPEECH_DIR OUT_DIR [VOSK_MODEL_DIR]
 
-SPEECH_DIR holds 16 kHz, 16 bit, mono .raw files. Needs tests/dred/dredtest and tests/dred/c2rt
-(tests/dred/build.sh), numpy, scipy and pystoi.
+SPEECH_DIR holds 16 kHz, 16 bit, mono .raw files. Needs tests/dred/dredtest (tests/dred/build.sh),
+numpy, scipy and pystoi. The Codec 2 rows need tests/dred/c2rt, which was built from the Codec 2 1.0
+sources removed in 2.7; without it they are left out.
 
 For every file it also makes a noisy copy (pink noise, 10 dB below the speech), then codes all of them
 with DRED at several quality levels and with Codec 2, and prints size and STOI. STOI is a standard
@@ -23,7 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DRED, C2 = os.path.join(HERE, "dredtest"), os.path.join(HERE, "c2rt")
 FS = 16000
 QS = [4, 7, 9, 12, 15]
-C2MODES = ["3200", "1300", "700C", "450"]
+C2MODES = ["3200", "1300", "700C", "450"] if os.path.exists(C2) else []
 EVERY = 50  # one DRED block per second
 
 
