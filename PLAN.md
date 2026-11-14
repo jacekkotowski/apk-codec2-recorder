@@ -4,7 +4,7 @@ Last updated: 2026-11-14 (part B built)
 
 ## Start here
 
-**Waiting for the owner: phone test of the 2.7 test build** (`dist/Codec2Recorder-2.7-test1.apk`, the app "Recorder test", package `pl.dyktafon.test`). It installs beside 2.6 and keeps its own recordings. DRED replaces Codec 2 in it (stage 9, part B, built 2026-11-14). Everything that touches Android audio is untested: recording, playback, saving WAV, compressing files, radio sending of `.dred`.
+**Waiting for the owner: phone test of 2.7** (`dist/Codec2Recorder-2.7.apk`, released 2026-11-14 on the owner's word, installs over 2.6). DRED replaces Codec 2 in it (stage 9, part B, built 2026-11-14). Everything that touches Android audio is untested: recording, playback, saving WAV, compressing files, radio sending of `.dred`.
 
 Phone test list (stage 9, part B, step 10):
 
