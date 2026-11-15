@@ -11,6 +11,7 @@ DRED and RADE are not yet tested on a phone (2.7, 2.8). What still holds from th
 - Default audio source VOICE_RECOGNITION (6). MIC caused overload.
 - The bar shows recording level: green, yellow above 0.85, red only on real mic overload.
 - Voice activation and the VOICE_RECOGNITION audio source are different settings.
+- RNNoise is ruled out: the owner judged it not good in an earlier session (said 2026-11-15). Don't propose it again; the app's own denoiser stays.
 
 The voice chain keeps the 2.4 behaviour at 16 kHz: same filter corners and time constants, 40 ms frames, levels scaled with the limiter ceiling (`VoiceChain`). The ceiling for DRED is 18000, not 11000, because the DRED decoder overshoots peaks less than Codec 2 (measured on a computer, `tests/dred/chain.py`); playback raises the level twice through a look-ahead limiter. Don't change these without measuring, and write the confirmed DRED settings here after the phone test (`PLAN.md` stage 10).
 

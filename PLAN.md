@@ -57,7 +57,7 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | 4 | Cable instead of air | Send and receive through a headset cable or USB audio, with transmitter keying | Not started |
 | 5 | Two-way link | Receiver reports missing frames, sender resends only those; short text messages | Not started |
 | 6 | FlatRaster over radio | The same link in apk-codec2flatraster, with a low-bitrate Radio preset | Not started |
-| 7 | Side tracks, any time | Offline transcription; RNNoise comparison; background music removal | Plans below |
+| 7 | Side tracks, any time | Offline transcription; background music removal. RNNoise is ruled out (owner, 2026-11-15) | Plans below |
 | 8 | RADE: natural-sounding voice, live and as a saved message | RADE measured on a computer through the same simulated channels as 700D, and a decision made | RADE V1 measured 2026-11-15, better than 700D in every channel; record-then-send voice messages and listening built in 2.8. Waiting for the phone and radio test. Real-time talk not built |
 | 9 | DRED replaces Codec 2: recordings (2.7, released 2026-11-14), then live voice (2.8) | Part A: measured on a computer. Part B: the app records, plays, exports and sends `.dred`, and Codec 2 is gone. Part C dropped for RADE (stage 8) | Part A done 2026-11-14 and the owner said go. Part B built and checked on a computer 2026-11-14, test build 2.7-test1 waiting for the phone test. Part C: the modem was shown to carry bytes on a computer; nothing built |
 | 10 | After 2.7 is confirmed on the phone | DRED settings written into `CLAUDE.md`; app name decided | Not started |
@@ -491,7 +491,7 @@ On the air this is a mode no other program decodes. Publish its description in t
 | Denoise, noise sample, continuous adaptation | Tested on synthetic speech with added noise |
 | Voice activation with 400 ms pre-roll | Tested on synthetic speech with added noise |
 | Microphone choice, rec level, audio source, treble boost, voice sensitivity and hold, denoise strength | Built, waiting for phone test |
-| RNNoise comparison | Blocked: running downloaded code needs the user's approval. Watch for cut word endings |
+| RNNoise comparison | Ruled out. The owner judged RNNoise not good in an earlier session (said 2026-11-15; this file had only recorded it as blocked). Don't propose it again |
 | Compress existing audio files through the voice path | DRED, any source rate through the new resampler (tested on a computer with tones), waiting for phone test |
 | Rumble cut and consonant lift | Measured on synthetic speech, waiting for phone test |
 | Look-ahead limiter and noise gate | Measured on synthetic speech, waiting for phone test |
