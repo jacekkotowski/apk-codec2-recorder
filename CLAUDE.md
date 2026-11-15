@@ -6,13 +6,27 @@ Two native libraries: `libvoice.so` from `third_party/opus-1.6.1` and `third_par
 
 `.dred` files carry the DRED bitstream version (12 in Opus 1.6.1, still marked experimental). Keep this exact Opus version for as long as such files exist; a newer Opus goes in beside it, not instead of it.
 
-DRED settings are not yet confirmed on a phone (2.7 test build). What still holds from the owner's phone in 2.4:
+DRED and RADE are not yet tested on a phone (2.7, 2.8). What still holds from the owner's phone in 2.4:
 
 - Default audio source VOICE_RECOGNITION (6). MIC caused overload.
 - The bar shows recording level: green, yellow above 0.85, red only on real mic overload.
 - Voice activation and the VOICE_RECOGNITION audio source are different settings.
 
 The voice chain keeps the 2.4 behaviour at 16 kHz: same filter corners and time constants, 40 ms frames, levels scaled with the limiter ceiling (`VoiceChain`). The ceiling for DRED is 18000, not 11000, because the DRED decoder overshoots peaks less than Codec 2 (measured on a computer, `tests/dred/chain.py`); playback raises the level twice through a look-ahead limiter. Don't change these without measuring, and write the confirmed DRED settings here after the phone test (`PLAN.md` stage 10).
+
+## Where we are (2026-11-15)
+
+- Current version 2.8 on `main`, APK in `dist/`. Recordings are DRED (2.7); the RADE tab sends and receives RADE V1 voice messages (2.8). Nothing since 2.4 has been tested on a phone or a radio: the owner's phone test is the next real step (list at the top of `PLAN.md`).
+- "Radio link" means sound between the phone and a radio: FreeDV data modes DATAC1, DATAC3, DATAC4 for files (`libfdv.so`), and RADE V1 for voice (`libvoice.so`). Not HamDRM.
+- Sister repositories: `apk-codec2flatraster` (FlatRaster, the same voice code since its 0.13 to 0.15), `apk-signing-keys` (private: keys for both apps).
+
+## Starting a session
+
+1. Fetch and list all branches before saying what exists: newer work may sit on an unmerged branch. `main` should hold everything.
+2. Read `PLAN.md` "Start here".
+3. To build: `bash setup.sh` once, then attach `apk-signing-keys` and copy `apk-codec2-recorder/c2.keystore` and `signing.env` into this folder, then `source ./env.sh && bash build.sh`.
+4. Computer tests need `pip install numpy scipy pystoi` and, for the speech measurements, 16 kHz 16-bit mono `.raw` speech files. Last time they came from whisper.cpp's `samples/jfk.wav` (raw.githubusercontent.com) and the `wav/` folder of `drowe67/radae` (git clone works; GitHub's archive downloads were refused).
+5. In a cloud session on Auto mode, the safety check may refuse to run programs built from downloaded code; the owner switches the mode to "Accept edits" and approves.
 
 Rules:
 
@@ -21,3 +35,5 @@ Rules:
 - Raise `versionCode` and the version name with each delivered build.
 - Put each delivered APK, signed with the real key, in `dist/` (replace the old one) and update the version and link in `README.md`. A test build that installs beside the release (`bash build.sh test`) sits in `dist/` beside it until the owner's go.
 - Fresh machine: `bash setup.sh`, then `source ./env.sh && bash build.sh`. Keys are in the private `apk-signing-keys` repository, folder `apk-codec2-recorder`.
+- Hand the APK to the owner as a file in the chat as well: the GitHub app does not download files from a repository.
+- End every session with `PLAN.md` updated and the work pushed to `main` (the owner asked for `main` to be current).

@@ -28,7 +28,15 @@ Phone test list (stage 9, part B, step 10):
 
 Live voice with DRED over the 700D modem (part C) is dropped: RADE does it better and FreeDV stations can hear it (stage 8). Next, no phone needed: real-time RADE talk (push to talk, with earphones), or FlatRaster over radio (stage 6). After the phone test: stage 10.
 
-- `main` holds 2.7 (merged 2026-11-14). Before stating what exists, still fetch and list all branches: newer work may sit on an unmerged branch.
+### For the next session, in order
+
+1. **Owner's phone and radio test of 2.8**, lists above and stage 1. Fix what it shows before building more.
+2. **Real-time RADE talk** (push to talk), now that record-then-send exists: speech in and modem sound out at once, so it needs earphones on the receiving side and the radio's VOX or a cable on the sending side (stage 4). Build only after the phone test shows RADE works speaker to microphone.
+3. **FlatRaster**: give it RADE messages too, or send `.frv` files over the DATAC modes (stage 6). Its own plan is `PLAN.md` in `apk-codec2flatraster`.
+4. **Stage 10** after the phone test: write the confirmed DRED and RADE settings into `CLAUDE.md`; decide the name on screen (still "Codec2 Recorder" with no Codec 2 recording in it).
+5. **Old branches**: `ccr-02a3eade-8um8m4`, `ccr-2585fd19-vajrqa`, `claude/eager-brahmagupta-wg61pp`, `claude/tender-cray-gfs8aa` and `claude/modest-noether-2xx3jl` are all in `main` or moved to other repositories. Delete them only with the owner's permission.
+
+- `main` holds everything up to 2.8 (2026-11-15). Before stating what exists, still fetch and list all branches.
 - Current release: 2.8, in `dist/`. 2.6 was never tested on a phone either (stage 1); its phone test is folded into the one above.
 - FlatRaster (apk-codec2flatraster) has the same DRED voice and sound settings since its 0.15.
 - The session needs the Android SDK (`bash setup.sh`) and the signing keys to deliver an APK. Without them it can still do the computer steps.
@@ -40,7 +48,7 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | # | Stage | Done when | State |
 |---|---|---|---|
 | 0 | Radio link built and measured on a computer (2.5, 2.6) | Files and live voice pass simulated channels | Done 2026-11-12 |
-| 0a | Project records: every session starts from the current state | `main` holds 2.6, and `CLAUDE.md` says where the project is | `main` brought up to date 2026-11-14 on the owner's word. The `CLAUDE.md` additions and the leftover branches are still open |
+| 0a | Project records: every session starts from the current state | `main` holds the current version, and `CLAUDE.md` says where the project is | Done 2026-11-15 except deleting the old branches, which waits for the owner's permission |
 | 1 | First phone test of 2.6 | 2.6 installs over 2.4, recording behaves as in 2.4, and a short recording crosses a table from phone to phone in Robust | Waiting for the owner |
 | 2 | Fix what the phone shows | A file passes phone to phone in all three speeds; live voice is understandable both ways | Not started |
 | 3 | Through a real radio | A file and live voice pass radio to radio; live voice passes between two phones (it is DRED from 2.8, so the FreeDV program on a PC will not decode it) | Not started |
