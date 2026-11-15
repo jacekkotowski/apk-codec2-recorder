@@ -491,7 +491,7 @@ On the air this is a mode no other program decodes. Publish its description in t
 | Denoise, noise sample, continuous adaptation | Tested on synthetic speech with added noise |
 | Voice activation with 400 ms pre-roll | Tested on synthetic speech with added noise |
 | Microphone choice, rec level, audio source, treble boost, voice sensitivity and hold, denoise strength | Built, waiting for phone test |
-| RNNoise comparison | Ruled out. The owner judged RNNoise not good in an earlier session (said 2026-11-15; this file had only recorded it as blocked). Don't propose it again |
+| RNNoise comparison | Ruled out. The owner used RNNoise in another project (ai-film-lab) and found the sound awful (said 2026-11-15; this file had only recorded it as blocked). Version 0.2 (2024) has a larger, retrained model and is reported to keep the voice clearer than 0.1, but it still applies one gain per frequency band, which is what dulls a voice in changing noise. Not looked at here. Don't propose it again unless the owner asks |
 | Compress existing audio files through the voice path | DRED, any source rate through the new resampler (tested on a computer with tones), waiting for phone test |
 | Rumble cut and consonant lift | Measured on synthetic speech, waiting for phone test |
 | Look-ahead limiter and noise gate | Measured on synthetic speech, waiting for phone test |
