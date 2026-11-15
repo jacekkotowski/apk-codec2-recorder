@@ -11,21 +11,23 @@ S=${ANDROID_SDK_ROOT:?Set ANDROID_SDK_ROOT to your Android SDK}
 BT=$S/build-tools/36.0.0; J=$S/platforms/android-36/android.jar; NDK=${ANDROID_NDK_ROOT:-$S/android-ndk-r28c}; O=out; rm -rf $O; mkdir -p $O/classes $O/res
 TC=$(echo $NDK/toolchains/llvm/prebuilt/*/bin)
 . ./opusflags.sh
+. ./radeflags.sh
+voice_nnet $O
 C12=third_party/codec2-1.2/src; H12=third_party/codec2-1.2/generated
 . ./fdvflags.sh
 # Each processor type builds in parallel; the logs are printed after.
 for pair in "arm64-v8a aarch64-linux-android29" "armeabi-v7a armv7a-linux-androideabi29" "x86_64 x86_64-linux-android29"; do set -- $pair; mkdir -p $O/lib/$1
  (
- # DRED coder and player: Opus 1.6.1 with DRED, flags in opusflags.sh.
- $TC/clang --target=$2 $OPUSFLAGS -DNDEBUG -fPIC -shared -fvisibility=hidden -Wl,-z,max-page-size=16384 -Wl,--no-undefined -o $O/lib/$1/libdred.so app/jni/dredjni.c $OPUSSRCS -lm -llog 2>&1 | grep -E "error|undefined" | head -8
- $TC/llvm-strip --strip-unneeded $O/lib/$1/libdred.so
+ # DRED coder and player, and RADE V1: Opus 1.6.1 with DRED (opusflags.sh) and rade_c (radeflags.sh), one library, one Opus.
+ $TC/clang --target=$2 $OPUSFLAGS $RADEFLAGS -DNDEBUG -fPIC -shared -fvisibility=hidden -Wl,-z,max-page-size=16384 -Wl,--no-undefined -o $O/lib/$1/libvoice.so app/jni/dredjni.c app/jni/radejni.c $VOICESRCS $O/nnet.c $RADESRCS -lm -llog 2>&1 | grep -E "error|undefined" | head -8
+ $TC/llvm-strip --strip-unneeded $O/lib/$1/libvoice.so
  # Modem library: Codec 2 1.2 with only the modes the app uses.
  $TC/clang --target=$2 -O2 -fPIC -shared -DNDEBUG $FDVFLAGS -fvisibility=hidden -I$C12 -I$H12 -Wl,-z,max-page-size=16384 -Wl,--no-undefined -o $O/lib/$1/libfdv.so app/jni/fdvjni.c $C12/*.c $H12/*.c -lm 2>&1 | grep -E "error|undefined" | head -8
  $TC/llvm-strip --strip-unneeded $O/lib/$1/libfdv.so
  ) > $O/lib-$1.log 2>&1 &
 done
 wait; cat $O/lib-*.log
-for a in arm64-v8a armeabi-v7a x86_64; do for l in dred fdv; do [ -f $O/lib/$a/lib$l.so ] || { echo "lib$l.so for $a did not build"; exit 1; }; done; done
+for a in arm64-v8a armeabi-v7a x86_64; do for l in voice fdv; do [ -f $O/lib/$a/lib$l.so ] || { echo "lib$l.so for $a did not build"; exit 1; }; done; done
 M=app/AndroidManifest.xml; APK=Codec2Recorder.apk; LINK=""
 if [ "$KIND" = test ]; then
  # Another package name, provider authority and label, so it installs beside the real app and keeps its own recordings.

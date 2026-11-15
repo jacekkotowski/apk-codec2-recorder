@@ -1,8 +1,8 @@
 package pl.dyktafon;
 
-/** The DRED coder and player in libdred.so (app/jni/dredjni.c). One block is one second: 50 frames of 320 samples at 16 kHz. */
+/** The DRED coder and player in libvoice.so (app/jni/dredjni.c). One block is one second: 50 frames of 320 samples at 16 kHz. */
 final class DredLib {
-    static { System.loadLibrary("dred"); }
+    static { System.loadLibrary("voice"); } // DRED and RADE share one library and one copy of Opus
     static native int bitstream();
     private static native long encOpen(int q);
     private static native int encFrame(long h, short[] pcm, byte[] out);
