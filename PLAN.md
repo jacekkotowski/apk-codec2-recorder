@@ -8,21 +8,22 @@ Last updated: 2026-11-14 (part B built)
 
 Phone test list (stage 9, part B, step 10):
 
-1. The test build installs beside 2.6 and both work.
+1. 2.7 installs over 2.6.
 2. Record 30 s of Polish at each level (best, balanced, small, smallest), with and without Denoise and Voice activation. Play, seek, pause.
 3. Does playback stutter? On which phone? (Speed on a phone, above all a 32-bit one, is not measured. On a computer one second decodes in 31 ms.)
 4. Is the recording level right: not quiet, not distorted? Does the level bar behave? (The ceiling moved from 11000 to 18000 and playback is raised twice, not 3.5 times; see part B results.)
 5. Save WAV, share, rename, delete. How long does SAVE WAV take for a 10-minute recording? (No progress is shown.)
 6. Recording with the screen off for ten minutes.
 7. Compress an existing audio file (COMPRESS AUDIO), for example a WhatsApp voice note.
-8. Send a recording phone to phone in Robust; it should join the list on the other phone and play. (Both phones need the test build.)
+8. Send a recording phone to phone in Robust; it should join the list on the other phone and play. (Both phones need 2.7.)
 9. Which level would you use every day? Is q12 (smallest) still good on your own voice?
 10. With Denoise on and the default settings, does speech sound processed or pumping? On a computer the automatic level costs intelligibility with DRED (part B results); if you hear it, try SETTINGS: Rec level off auto, Compressor off.
 
-After the owner's go: the real build, `versionCode` 18, version name 2.7, in `dist/` in place of 2.6 (`bash build.sh`, part B step 8). Then stage 10, then part C: live voice with DRED over the FreeDV modem (2.8).
+Next to build, no phone needed: part C, live voice with DRED over the FreeDV modem (2.8). After the phone test: stage 10.
 
-- `main` holds everything up to the DRED plan of 2026-11-14. The 2.7 work is on branch `claude/modest-noether-2xx3jl` until merged. Before stating what exists, still fetch and list all branches: newer work may sit on an unmerged branch.
-- Current release: 2.6, in `dist/`. Not yet tested on a phone (stage 1). The 2.7 test build is in `dist/` beside it.
+- `main` holds 2.7 (merged 2026-11-14). Before stating what exists, still fetch and list all branches: newer work may sit on an unmerged branch.
+- Current release: 2.7, in `dist/`. 2.6 was never tested on a phone either (stage 1); its phone test is folded into the one above.
+- FlatRaster (apk-codec2flatraster) has the same DRED voice and sound settings since its 0.15.
 - The session needs the Android SDK (`bash setup.sh`) and the signing keys to deliver an APK. Without them it can still do the computer steps.
 
 ## Roadmap
@@ -41,7 +42,7 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | 6 | FlatRaster over radio | The same link in apk-codec2flatraster, with a low-bitrate Radio preset | Not started |
 | 7 | Side tracks, any time | Offline transcription; RNNoise comparison; background music removal | Plans below |
 | 8 | RADE: natural-sounding voice, live and as a saved message | RADE measured on a computer through the same simulated channels as 700D, and a decision made | Not started. Running the downloaded code needs the owner's approval |
-| 9 | DRED replaces Codec 2: recordings (2.7), then live voice (2.8) | Part A: measured on a computer. Part B: the app records, plays, exports and sends `.dred`, and Codec 2 is gone. Part C: live voice with DRED through the FreeDV 700D modem | Part A done 2026-11-14 and the owner said go. Part B built and checked on a computer 2026-11-14, test build 2.7-test1 waiting for the phone test. Part C: the modem was shown to carry bytes on a computer; nothing built |
+| 9 | DRED replaces Codec 2: recordings (2.7, released 2026-11-14), then live voice (2.8) | Part A: measured on a computer. Part B: the app records, plays, exports and sends `.dred`, and Codec 2 is gone. Part C: live voice with DRED through the FreeDV 700D modem | Part A done 2026-11-14 and the owner said go. Part B built and checked on a computer 2026-11-14, test build 2.7-test1 waiting for the phone test. Part C: the modem was shown to carry bytes on a computer; nothing built |
 | 10 | After 2.7 is confirmed on the phone | DRED settings written into `CLAUDE.md`; app name decided | Not started |
 
 ### Stage 0a: project records
