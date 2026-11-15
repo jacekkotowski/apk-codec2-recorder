@@ -4,7 +4,7 @@ Last updated: 2026-11-15 (RADE messages built, 2.8)
 
 ## Start here
 
-**Review and big plan for both apps: [ROADMAP.md](ROADMAP.md)** (2026-11-15). It is a proposal waiting for the owner's decisions (its section 2); nothing in it is built. It covers the code structure, the sound chain, the interface, the radio link and FlatRaster's picture. Its section 9 also names which model does which stage (Sonnet for test-guarded work, the stronger model for measurements and design). Until the owner decides, the lists below stand.
+**Review and big plan for both apps: [ROADMAP.md](ROADMAP.md)** (2026-11-15). **Next step: its stage 0, the self-test and diagnostics build, in a new session on Sonnet.** The owner asked to start (2026-11-15); stage 0 needs no decision, and the recommendations in its section 2 are the working decisions (confirm D1 with the owner before stage 1). Nothing in it is built yet. It covers the code structure, the sound chain, the interface, the radio link and FlatRaster's picture. Its section 9 also names which model does which stage (Sonnet for test-guarded work, the stronger model for measurements and design). The phone test lists below stay valid; stage 0 covers most of them from one phone.
 
 **Waiting for the owner: phone test of 2.8** (`dist/Codec2Recorder-2.8.apk`, installs over 2.7). 2.8 adds RADE voice messages (stage 8, built 2026-11-15) to the DRED recordings of 2.7. Nothing that touches Android audio has run on a phone: recording, playback, saving WAV, compressing files, radio sending, and all of RADE.
 

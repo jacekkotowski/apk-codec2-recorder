@@ -21,6 +21,8 @@ Both repositories were read in full (all app code, native layers, pages, build s
 
 Each has my recommendation first. The plan in section 9 assumes the recommendations.
 
+**State on 2026-11-15: the owner asked to start.** The recommendations are the working decisions unless the owner says otherwise. Stage 0 needs none of them and can begin at once. D1 is the only one that is costly to undo: the session that does stage 1 asks the owner one question, "one repository, yes or no", before it moves any file. D6 still needs a name from the owner and blocks nothing.
+
 | # | Decision | Recommendation | Why |
 |---|---|---|---|
 | D1 | One repository or two | **One**, in `apk-codec2-recorder`, with folders `core/`, `apps/recorder/`, `apps/flatraster/`. Both package names and both signing keys stay, so both apps install over their current versions | Ends the copying. A cloud session attaches one repository. FlatRaster's repository gets a note pointing here and is archived |
@@ -343,7 +345,7 @@ Rules for a Sonnet session or helper:
 - It stops and writes the problem into `PLAN.md` "Start here", for a stronger-model session, when: a reference output differs and the cause is not obvious; a native library crashes or gives different output; a measurement disagrees with a table in the plans.
 - Its work is accepted only with the whole test run passing.
 
-What can run side by side: stages 0 to 2 need no decisions beyond D1. Stage 3 and stage 6a are independent measurements. Stages 4 and 5 should follow stage 1, because they rewrite the page and the bridge.
+Stage 0 is built in Codec2 Recorder first and needs no decision; FlatRaster gets the same self-test when its code joins the shared core in stage 1 (or by copying, if D1 turns out to be two repositories). What can run side by side: stages 1 and 2 need only D1. Stage 3 and stage 6a are independent measurements. Stages 4 and 5 should follow stage 1, because they rewrite the page and the bridge.
 
 How this meets the existing plans: the phone test lists at the top of `PLAN.md` stay valid, and stage 0 here covers most of them. Stages 4 to 6 of the recorder's `PLAN.md` (cable, two-way link, FlatRaster over radio) become stages 7, 5 and 6d here. `PLAN-radio.md` in FlatRaster is superseded by section 6 and stage 6d: the transport it plans to copy comes from the shared core.
 
