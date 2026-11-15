@@ -18,6 +18,7 @@ The voice chain keeps the 2.4 behaviour at 16 kHz: same filter corners and time 
 
 - Current version 2.8 on `main`, APK in `dist/`. Recordings are DRED (2.7); the RADE tab sends and receives RADE V1 voice messages (2.8). Nothing since 2.4 has been tested on a phone or a radio: the owner's phone test is the next real step (list at the top of `PLAN.md`).
 - "Radio link" means sound between the phone and a radio: FreeDV data modes DATAC1, DATAC3, DATAC4 for files (`libfdv.so`), and RADE V1 for voice (`libvoice.so`). Not HamDRM.
+- `ROADMAP.md` (2026-11-15) is a review of both apps and a proposed big plan: shared core in one repository, a "Natural" sound profile, a task-based interface, radio use by hand, FlatRaster's picture. It waits for the owner's decisions; don't start it without them.
 - Sister repositories: `apk-codec2flatraster` (FlatRaster, the same voice code since its 0.13 to 0.15), `apk-signing-keys` (private: keys for both apps).
 
 ## Starting a session

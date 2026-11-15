@@ -4,6 +4,8 @@ Last updated: 2026-11-15 (RADE messages built, 2.8)
 
 ## Start here
 
+**Review and big plan for both apps: [ROADMAP.md](ROADMAP.md)** (2026-11-15). It is a proposal waiting for the owner's decisions (its section 2); nothing in it is built. It covers the code structure, the sound chain, the interface, the radio link and FlatRaster's picture. Until the owner decides, the lists below stand.
+
 **Waiting for the owner: phone test of 2.8** (`dist/Codec2Recorder-2.8.apk`, installs over 2.7). 2.8 adds RADE voice messages (stage 8, built 2026-11-15) to the DRED recordings of 2.7. Nothing that touches Android audio has run on a phone: recording, playback, saving WAV, compressing files, radio sending, and all of RADE.
 
 RADE phone test (stage 8):
