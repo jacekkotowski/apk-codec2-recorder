@@ -21,11 +21,15 @@ Both repositories were read in full (all app code, native layers, pages, build s
 
 Each has my recommendation first. The plan in section 9 assumes the recommendations.
 
-**State on 2026-11-15: the owner asked to start.** The recommendations are the working decisions unless the owner says otherwise. Stage 0 needs none of them and can begin at once. D1 is the only one that is costly to undo: the session that does stage 1 asks the owner one question, "one repository, yes or no", before it moves any file. D6 still needs a name from the owner and blocks nothing.
+**Decided 2026-11-15, when the owner asked to start:**
+
+- **D2 to D10: the recommendations in the table are decided.** D6 still needs a name from the owner and blocks nothing.
+- **D1 is not yet answered.** The owner's message read "D1 = one repository (or: two repositories)": both options, no choice. One repository stays the working recommendation, but D1 is the only decision that is costly to undo, so **no file moves between repositories until the owner answers "one" or "two"**. The session that starts stage 1 asks once, at its start. Stage 0 is the same either way, because it is built in each app's own repository (see 9.1 and the stage 0 record in `PLAN.md`).
+- **Stage 0 started 2026-11-15** on Sonnet 5.5, in both repositories. Record of what was built: `PLAN.md` "Start here".
 
 | # | Decision | Recommendation | Why |
 |---|---|---|---|
-| D1 | One repository or two | **One**, in `apk-codec2-recorder`, with folders `core/`, `apps/recorder/`, `apps/flatraster/`. Both package names and both signing keys stay, so both apps install over their current versions | Ends the copying. A cloud session attaches one repository. FlatRaster's repository gets a note pointing here and is archived |
+| D1 | One repository or two | **Open: owner's answer was "one (or: two)".** Recommendation: **One**, in `apk-codec2-recorder`, with folders `core/`, `apps/recorder/`, `apps/flatraster/`. Both package names and both signing keys stay, so both apps install over their current versions | Ends the copying. A cloud session attaches one repository. FlatRaster's repository gets a note pointing here and is archived |
 | D2 | Phone test first, or clean-up first | **Both at once.** The clean-up (stage 1) is made provably behaviour-identical by tests that compare output sample for sample, so it does not add risk to the untested releases | The phone test and the clean-up do not depend on each other |
 | D3 | Default sound profile for DRED and RADE | **A new "Natural" profile** becomes the default once the owner has compared it by ear; today's chain stays as "Processed" | Section 5 |
 | D4 | RNNoise (neural denoiser) | **Closed: not used.** The owner judged it not good in an earlier session (said 2026-11-15); the plan files had only recorded it as "blocked". The app's own denoiser stays, and is improved by measurement (section 5.4) | Owner's decision |
