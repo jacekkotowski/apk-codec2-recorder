@@ -1,12 +1,31 @@
 # Codec2 Recorder plan
 
-Last updated: 2026-11-15 (RADE messages built, 2.8)
+Last updated: 2026-11-15 (stage 0 of ROADMAP.md built: self-test, 2.8.1)
 
 ## Start here
 
-**Review and big plan for both apps: [ROADMAP.md](ROADMAP.md)** (2026-11-15). **Next step: its stage 0, the self-test and diagnostics build, in a new session on Sonnet.** The owner asked to start (2026-11-15); stage 0 needs no decision, and the recommendations in its section 2 are the working decisions (confirm D1 with the owner before stage 1). Nothing in it is built yet. It covers the code structure, the sound chain, the interface, the radio link and FlatRaster's picture. Its section 9 also names which model does which stage (Sonnet for test-guarded work, the stronger model for measurements and design). The phone test lists below stay valid; stage 0 covers most of them from one phone.
+**Review and big plan for both apps: [ROADMAP.md](ROADMAP.md)** (2026-11-15). The owner's decisions are in its section 2: D2 to D10 as recommended; **D1 (one repository or two) is still open**, because the owner's message gave both options. Ask once, at the start of the session that begins stage 1, and move no file before the answer.
 
-**Waiting for the owner: phone test of 2.8** (`dist/Codec2Recorder-2.8.apk`, installs over 2.7). 2.8 adds RADE voice messages (stage 8, built 2026-11-15) to the DRED recordings of 2.7. Nothing that touches Android audio has run on a phone: recording, playback, saving WAV, compressing files, radio sending, and all of RADE.
+**Stage 0 of ROADMAP.md is built (2026-11-15, on Sonnet 5.5): the self-test, in both apps.** Codec2 Recorder 2.8.1 (`dist/Codec2Recorder-2.8.1.apk`, installs over 2.8; the 2.8 APK is gone from `dist/`) has a new TEST tab; FlatRaster 0.15.1 (`apk-codec2flatraster`) has a Self-test panel. Both are the previous version plus the test, nothing else changed. **Next step is the owner's: run it once on the phone and paste the report.**
+
+What the owner does, in Codec2 Recorder: TEST tab, put the phone on a table in a quiet room at about three quarters media volume, RUN SELF-TEST (about three minutes, the screen stays on, allow the microphone when asked), then SHARE REPORT and paste it into the chat. Then SAVE TEST CLIP (30 s from the microphone with no processing by the app: a few sentences, then 5 s of quiet). Files go to Download/Codec2Recorder: `selftest_*.txt`, `selftest_mic_*.wav` (what the microphone heard in the modem loop) and `testclip_*.wav`. In FlatRaster: Self-test button, RUN SELF-TEST (about a minute), SHARE REPORT; SAVE TEST CLIP (Download/FlatRaster).
+
+What the report holds (`SelfTest.java`, `SelfTestRun.java`; FlatRaster: `PictureTest.java`, `VideoTest.java`):
+
+- Phone, Android, processor types, cores, media volume, outputs and microphones.
+- Speed in times real time, with a verdict (ok, TIGHT, TOO SLOW): the voice chain at the default settings; DRED coding and playing at all four levels; recording (chain plus coder together); RADE V1 sending, receiving, and how long it stays locked. Input is 20 s (RADE 10 s) of made-up speech, the same on every phone, so phones compare. This answers phone test list items 3 (stutter) and the RADE question 1 as far as speed goes. It does not say how the sound is.
+- Modem loop through the phone's own speaker and microphone: a 100-byte file, robust at 25%, 50% and 100% of the level SEND uses, then fast and very robust at 50%. Per run: file received or not, frames received of sent, signal level and peak, the room's level, clipped samples, SNR. This tells whether the speaker-to-microphone path works at all, and at which level.
+- FlatRaster: speed of the posterize filter on a made-up scene; for AV1, HEVC and H.264 which encoders exist (software or hardware, lowest bit rate, size support) and what the app's own `VideoEncoder` really makes from the scene at 5 and 2 kbit/s asked: bytes, real kbit/s, full-picture size, time. The scene is synthetic: real camera noise will cost more bytes.
+
+Tested on a computer, not on a phone: `bash tests/selftest/run.sh` in each repository runs the speed tests against the real DRED and RADE libraries, the FlatRaster filter test, and in the recorder the modem loop through a simulated path. The test shows the loop reports FAILURE for a silent microphone and heavy noise, and CLIPPED for an overloaded one. The Android parts (`SelfTestRun`, `VideoTest`, microphone and speaker, saving files, the page panels) were only built and checked against a page stub. Page tests pass in both.
+
+How "save what the microphone heard" was read: the owner's list in ROADMAP.md stage 0 has "save test clip" and "save what the microphone heard" as two items. The first is the 30 s clip (SAVE TEST CLIP). The second is taken to be the sound recorded during the modem loop, saved as `selftest_mic_*.wav` with a second of silence between runs, so it can be looked at on a computer. Say so if something else was meant.
+
+Not done in stage 0: the self-test does not play RADE through the speaker and listen to it (the data modem loop shows the path; the RADE tab's HEAR AS RADE and two-phone test remain in the lists below); no Bluetooth or USB microphone test; no test of the saved WAV playing back. Other changes: `bash build.sh test` now labels the build with the manifest's version plus "-test" (it said 2.7-test1).
+
+Fix what the first report shows (stage 2 of the older roadmap below, and the 2.7 and 2.8 phone lists) before building features on it. If the report shows TOO SLOW or TIGHT for something, that decides the next work.
+
+**Waiting for the owner: phone test of 2.8** (now `dist/Codec2Recorder-2.8.1.apk`, which is 2.8 plus the TEST tab; installs over 2.7). 2.8 adds RADE voice messages (stage 8, built 2026-11-15) to the DRED recordings of 2.7. Nothing that touches Android audio has run on a phone: recording, playback, saving WAV, compressing files, radio sending, and all of RADE.
 
 RADE phone test (stage 8):
 

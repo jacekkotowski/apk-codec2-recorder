@@ -2,11 +2,12 @@
 // Writes ui_record.png, ui_settings.png, ui_files.png.
 // Run: node tests/ui_radio.js
 const { chromium } = require('playwright'); const path = require('path');
-const STUB = `window.__c=[];window.__radio={on:false,op:'',talk:false,sent:0,frames:0,got:0,needed:0,sync:false,snr:0,level:0,left:0,secs:0,total:0,message:0};
+const STUB = `window.__c=[];window.__t={on:false,done:false,step:'',text:''};window.__radio={on:false,op:'',talk:false,sent:0,frames:0,got:0,needed:0,sync:false,snr:0,level:0,left:0,secs:0,total:0,message:0};
 window.Android=new Proxy({},{get:(t,k)=>(...a)=>{__c.push(k+':'+a.join(','));
  if(k=='microphones')return JSON.stringify([{id:7,name:'Phone microphone (bottom)'},{id:9,name:'USB'}]);
  if(k=='list')return JSON.stringify([{name:'2026-11-03_16-10-00_DRED-small.dred',mode:'DRED small',secs:30,bytes:2632,time:2,old:false},{name:'long_DRED-small.dred',mode:'DRED small',secs:300,bytes:19000,time:1,old:false},{name:'2026-11-01_09-00-00_700C.c2',mode:'Codec 2, older version',secs:0,bytes:6407,time:0,old:true}]);
  if(k=='rename')return true;
+ if(k=='testState')return JSON.stringify(window.__t);
  if(k=='status')return JSON.stringify({rec:false,paused:false,waiting:false,vad:.3,gain:12,level:.4,secs:0,bytes:0,play:null,pos:0,dur:0,msg:null,sampling:false,hasNoise:true,comp:-1,clip:false,routed:'',radio:window.__radio});
 }})`;
 (async () => {
@@ -80,9 +81,21 @@ window.Android=new Proxy({},{get:(t,k)=>(...a)=>{__c.push(k+':'+a.join(','));
   check((await pg.innerText('#lst')) === 'LISTENING' && (await pg.innerText('#lsig')).includes('Signal locked, SNR 3 dB'), 'listening view');
   await pg.screenshot({ path: 'ui_rade.png' });
   await set("Object.assign(__radio,{on:false,op:'',sync:false})"); await wait();
+  // TEST tab: buttons call the bridge, the report is shown, SHARE REPORT waits for a report
+  await pg.setViewportSize({ width: 393, height: 800 });
+  await pg.click('#tabs button[data-t=test]'); await pg.waitForTimeout(1200);
+  check(await vis('#trun') && await vis('#tclip') && !await vis('#recb') && !await vis('#list') && await pg.isDisabled('#tshare'), 'test tab default');
+  await pg.click('#trun'); await pg.click('#tclip');
+  check((await calls()).includes('testRun:') && (await calls()).includes('testClip:'), 'test buttons call the bridge');
+  await set("Object.assign(__t,{on:true,step:'Speed: RADE',text:'Self-test\\nPhone: X'})"); await pg.waitForTimeout(1300);
+  check((await pg.innerText('#tst')) === 'RUNNING' && await vis('#tstop') && !await vis('#trun') && (await pg.innerText('#trep')).includes('Speed: RADE'), 'test running view');
+  await set("Object.assign(__t,{on:false,done:true,step:'',text:'Self-test\\nPhone: X\\nEnd of report.'})"); await pg.waitForTimeout(1300);
+  check(!await pg.isDisabled('#tshare') && (await pg.innerText('#trep')).includes('End of report.'), 'finished report can be shared');
+  await pg.click('#tshare'); check((await calls()).includes('testShare:'), 'share calls the bridge');
+  await pg.screenshot({ path: 'ui_test.png' });
   for (const w of [320, 393]) { // nothing may stick out sideways on a narrow phone
     await pg.setViewportSize({ width: w, height: 700 });
-    for (const tb of ['deck', 'live', 'files']) {
+    for (const tb of ['deck', 'live', 'files', 'test']) {
       await pg.click(`#tabs button[data-t=${tb}]`);
       check(await pg.evaluate("document.documentElement.scrollWidth<=innerWidth && [...document.querySelectorAll('.deck:not([hidden]) *')].every(e=>e.getBoundingClientRect().right<=innerWidth+1)"), `fits width ${w} ${tb}`);
     }

@@ -32,7 +32,7 @@ M=app/AndroidManifest.xml; APK=Codec2Recorder.apk; LINK=""
 if [ "$KIND" = test ]; then
  # Another package name, provider authority and label, so it installs beside the real app and keeps its own recordings.
  sed -e 's/android:authorities="pl.dyktafon.files"/android:authorities="pl.dyktafon.test.files"/' -e 's/android:label="Codec2 Recorder"/android:label="Recorder test"/' $M > $O/AndroidManifest.xml
- M=$O/AndroidManifest.xml; APK=Codec2Recorder-test.apk; LINK="--rename-manifest-package pl.dyktafon.test --version-name 2.7-test1 --replace-version"
+ M=$O/AndroidManifest.xml; APK=Codec2Recorder-test.apk; LINK="--rename-manifest-package pl.dyktafon.test --version-name $(sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' app/AndroidManifest.xml)-test --replace-version"
 fi
 $BT/aapt2 compile --dir app/res -o $O/res/res.zip
 $BT/aapt2 link -o $O/base.apk -I $J --manifest $M $LINK --min-sdk-version 29 --target-sdk-version 36 -A app/assets $O/res/res.zip

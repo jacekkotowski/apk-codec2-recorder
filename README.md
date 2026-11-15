@@ -1,6 +1,6 @@
 # Codec2 Recorder
 
-Offline Android dictaphone and radio voice tool. Package `pl.dyktafon`, current version **2.8**.
+Offline Android dictaphone and radio voice tool. Package `pl.dyktafon`, current version **2.8.1**.
 
 - **Record** speech at 2 to 10 kB per minute. From 2.7 the coder is DRED, the neural speech coder inside the Opus library; up to 2.6 it was Codec 2. Voice chain: rumble cut, denoiser with noise sample, gate, treble and consonant lift, leveler, compressor, look-ahead limiter. It also compresses existing audio files.
 - **Send files through an SSB radio by sound alone.** The phone's speaker plays into the radio's microphone; on the other side a phone's microphone listens to the radio's speaker. Recordings, text, small pictures, anything up to 100 kB. FreeDV data modes with LDPC error correction, plus repair frames so a one-way broadcast survives lost frames.
@@ -29,7 +29,7 @@ Recording settings were confirmed on the owner's phone in 2.4, for Codec 2. **DR
 
 ## Download
 
-[`dist/Codec2Recorder-2.8.apk`](dist/Codec2Recorder-2.8.apk), signed with the project key, installs over 2.6 and earlier. Android will ask to allow installing from this source.
+[`dist/Codec2Recorder-2.8.1.apk`](dist/Codec2Recorder-2.8.1.apk), signed with the project key, installs over 2.6 and earlier. 2.8.1 is 2.8 with a TEST tab (self-test and test clip) added; nothing else changed. Android will ask to allow installing from this source.
 
 Old `.c2` recordings don't play in 2.7. To keep one, save it as WAV in 2.6 before upgrading: [2.6 APK](https://github.com/jacekkotowski/apk-codec2-recorder/raw/16231bd/dist/Codec2Recorder-2.6.apk).
 
@@ -66,6 +66,7 @@ For each delivered build: raise `versionCode` and the version name in `app/Andro
   - `java -Djava.library.path=tests/dred/out -cp tests/dred/out pl.dyktafon.RP ...`: the whole recording path without Android.
   - `python3 tests/dred/run.py SPEECH_DIR OUT_DIR` (DRED levels, size and intelligibility) and `python3 tests/dred/chain.py SPEECH_DIR OUT_DIR` (the recording path on clean and noisy speech). Need numpy, scipy, pystoi and 16 kHz 16-bit speech files.
 - `bash tests/radio/build.sh`, then `python3 tests/radio/run.py SPEECH.raw`: files and live voice (FreeDV 700D) through the modem and simulated channels (noise, fading, speaker-to-microphone echo, distortion, clock difference). Needs gcc, a JDK and numpy; SPEECH.raw is about 10 s of 8 kHz 16-bit speech.
+- `bash tests/selftest/run.sh`: the self-test (`SelfTest.java`: voice speed, DRED, RADE, modem loop) on this computer's libraries, with a simulated speaker-to-microphone path that must also be seen to fail when it should. Needs `tests/dred/build.sh` and `tests/radio/build.sh` first (it runs them if missing).
 - `node tests/ui_radio.js`: the page against a stub of the app. Needs Playwright.
 
 ## Layout

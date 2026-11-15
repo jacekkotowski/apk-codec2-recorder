@@ -223,7 +223,7 @@ public class MainActivity extends Activity {
     private static final double PLAY_GAIN = 2;
     private static void boost(short[] pcm, int n, Limiter l) { for (int i = 0; i < n; i++) pcm[i] = (short) Math.round(l.process(pcm[i] * PLAY_GAIN)); }
 
-    private static byte[] wavHeader(int dataBytes, int fs) {
+    static byte[] wavHeader(int dataBytes, int fs) {
         byte[] h = new byte[44]; java.nio.ByteBuffer b = java.nio.ByteBuffer.wrap(h).order(java.nio.ByteOrder.LITTLE_ENDIAN);
         b.put("RIFF".getBytes()); b.putInt(36 + dataBytes); b.put("WAVEfmt ".getBytes()); b.putInt(16); b.putShort((short) 1); b.putShort((short) 1);
         b.putInt(fs); b.putInt(2 * fs); b.putShort((short) 2); b.putShort((short) 16); b.put("data".getBytes()); b.putInt(dataBytes);
@@ -354,6 +354,7 @@ public class MainActivity extends Activity {
     private boolean radioReady() {
         if (RecService.running) { notice = "Stop the recording first."; return false; }
         if (RadioService.running) return false;
+        if (SelfTestRun.running()) { notice = "The self-test is running."; return false; }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { notice = "Allow the microphone, then press again."; requestPermissions(Build.VERSION.SDK_INT >= 33 ? new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS} : new String[]{Manifest.permission.RECORD_AUDIO}, REQ_PERM); return false; }
         return true;
     }
@@ -361,6 +362,16 @@ public class MainActivity extends Activity {
         if (!radioReady()) return;
         stopPlayback();
         try { startForegroundService(i.setClass(this, RadioService.class)); } catch (Exception e) { notice = "Can't start the radio link: " + e.getMessage(); }
+    }
+
+    /** Starts the self-test or the 30 s test clip. They use the microphone, so they run only when nothing else does; the screen stays on meanwhile. */
+    private void startTest(boolean clip) {
+        if (SelfTestRun.running()) return;
+        if (!radioReady()) return;
+        stopPlayback();
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        Runnable off = () -> runOnUiThread(() -> getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON));
+        if (clip) SelfTestRun.clip(this, source, off); else SelfTestRun.runAll(this, off);
     }
 
     @Override protected void onActivityResult(int req, int res, Intent data) {
@@ -456,6 +467,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void startRec(String mode, boolean dn, boolean va) {
             runOnUiThread(() -> {
                 if (RadioService.running) { notice = "Stop the radio link first."; return; }
+                if (SelfTestRun.running()) { notice = "The self-test is running."; return; }
                 boolean mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
                 boolean nt = (Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) && (Build.VERSION.SDK_INT < 31 || checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED);
                 if (mic && (nt || getSharedPreferences("p", 0).getBoolean("asked2", false))) { startRecording(mode, dn, va); return; }
@@ -541,6 +553,17 @@ public class MainActivity extends Activity {
                 } catch (Exception e) { notice = "Save failed: " + e.getMessage(); }
             }, "wav").start();
         }
+        // ---- self-test (stage 0 of ROADMAP.md): see SelfTestRun ----
+        @JavascriptInterface public String testState() {
+            try { return SelfTestRun.state().toString(); } catch (org.json.JSONException e) { return "{}"; }
+        }
+        @JavascriptInterface public void testRun() { runOnUiThread(() -> startTest(false)); }
+        @JavascriptInterface public void testClip() { runOnUiThread(() -> startTest(true)); }
+        @JavascriptInterface public void testStop() { SelfTestRun.cancel(); }
+        @JavascriptInterface public void testShare() {
+            runOnUiThread(() -> startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, SelfTestRun.report())
+                    .putExtra(Intent.EXTRA_SUBJECT, "Codec2 Recorder self-test"), "Share report")));
+        }
         @JavascriptInterface public void importFile() {
             runOnUiThread(() -> {
                 Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
@@ -548,6 +571,8 @@ public class MainActivity extends Activity {
             });
         }
     }
+
+    @Override protected void onPause() { SelfTestRun.cancel(); super.onPause(); } // the microphone is only good while this screen shows
 
     @Override protected void onDestroy() { stopPlayback(); web.destroy(); super.onDestroy(); }
 }
