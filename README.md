@@ -1,10 +1,10 @@
 # Codec2 Recorder
 
-Offline Android dictaphone and radio voice tool. Package `pl.dyktafon`, current version **2.7**.
+Offline Android dictaphone and radio voice tool. Package `pl.dyktafon`, current version **2.8**.
 
 - **Record** speech at 2 to 10 kB per minute. From 2.7 the coder is DRED, the neural speech coder inside the Opus library; up to 2.6 it was Codec 2. Voice chain: rumble cut, denoiser with noise sample, gate, treble and consonant lift, leveler, compressor, look-ahead limiter. It also compresses existing audio files.
 - **Send files through an SSB radio by sound alone.** The phone's speaker plays into the radio's microphone; on the other side a phone's microphone listens to the radio's speaker. Recordings, text, small pictures, anything up to 100 kB. FreeDV data modes with LDPC error correction, plus repair frames so a one-way broadcast survives lost frames.
-- **Live voice** with FreeDV 700D (push to talk) in 2.6. Hidden in 2.7; it returns in 2.8 carrying DRED.
+- **RADE voice messages** (2.8): record a message, then send it through the radio as RADE V1, FreeDV's current voice mode, so FreeDV stations hear it. The phone's microphone stays off while it sends, so there is no feedback. LISTEN receives RADE and saves each message to the recordings. HEAR AS RADE plays a message the way a station would hear it.
 
 ## DRED recordings (2.7)
 
@@ -25,11 +25,11 @@ No internet permission, no accounts.
 
 ## Status
 
-Recording settings were confirmed on the owner's phone in 2.4, for Codec 2. **DRED recording (2.7) is tested on a computer only**: nothing that touches Android audio has run on a phone. **The radio link (2.5, 2.6) is also tested on a computer only**, through simulated channels: not yet on a phone, not on a radio. Measurements, roadmap and the phone test lists are in [PLAN.md](PLAN.md).
+Recording settings were confirmed on the owner's phone in 2.4, for Codec 2. **DRED recording (2.7) is tested on a computer only**: nothing that touches Android audio has run on a phone. **RADE voice messages (2.8) are tested on a computer only**: through simulated channels, not on a phone or a radio. **The radio link (2.5, 2.6) is also tested on a computer only**, through simulated channels: not yet on a phone, not on a radio. Measurements, roadmap and the phone test lists are in [PLAN.md](PLAN.md).
 
 ## Download
 
-[`dist/Codec2Recorder-2.7.apk`](dist/Codec2Recorder-2.7.apk), signed with the project key, installs over 2.6 and earlier. Android will ask to allow installing from this source.
+[`dist/Codec2Recorder-2.8.apk`](dist/Codec2Recorder-2.8.apk), signed with the project key, installs over 2.6 and earlier. Android will ask to allow installing from this source.
 
 Old `.c2` recordings don't play in 2.7. To keep one, save it as WAV in 2.6 before upgrading: [2.6 APK](https://github.com/jacekkotowski/apk-codec2-recorder/raw/16231bd/dist/Codec2Recorder-2.6.apk).
 
@@ -39,7 +39,7 @@ Old `.c2` recordings don't play in 2.7. To keep one, save it as WAV in 2.6 befor
 |---|---|
 | Record | REC, compression level, Denoise, Voice activation. Microphone, source, level and audio options are behind SETTINGS |
 | Files | SEND on each recording (shows time on air), SEND ANY FILE, RECEIVE, TEST TONE. Speed: Fast 980 bit/s, Robust 320 bit/s, Very robust 87 bit/s. Repair: +25% to +200%, or repeat until stopped |
-| Live | START, then tap TALK to transmit and tap again to listen. In 2.6 only; hidden in 2.7 |
+| RADE | RECORD MESSAGE, PLAY, HEAR AS RADE, SEND; LISTEN, with Play while listening for earphones |
 
 Both sides need the same speed. Hold the phone close to the radio's microphone: in simulation, room echo as loud as the direct sound stopped the Fast and Robust speeds. A received recording joins the list; any other file goes to `Download/Codec2Recorder`.
 
@@ -72,11 +72,12 @@ For each delivered build: raise `versionCode` and the version name in `app/Andro
 
 - `app/assets/index.html`: the whole interface (WebView).
 - `app/src/pl/dyktafon/`: `MainActivity` (bridge to the page, playback, file compression), `RecService` (recording), `Recorder` (voice chain to `.dred` file), `VoiceChain` and its parts, `Resampler`, `Dred` (file format), `DredLib` (coder and player JNI). Radio link: `Fountain` (repair frames), `RadioLink` (file to modem audio and back), `Radio` (modem JNI), `RadioService` (Android audio).
-- `app/jni/dredjni.c` with `third_party/opus-1.6.1` builds `libdred.so`, the DRED coder and player; flags and source list in `opusflags.sh`. `app/jni/fdvjni.c` with `third_party/codec2-1.2` builds `libfdv.so`, the modem; its mode list is in `fdvflags.sh`.
+- `app/jni/dredjni.c` and `app/jni/radejni.c` with `third_party/opus-1.6.1` and `third_party/rade_c` build `libvoice.so`: the DRED coder and player, and RADE V1; flags and source lists in `opusflags.sh` and `radeflags.sh`. `app/jni/fdvjni.c` with `third_party/codec2-1.2` builds `libfdv.so`, the modem; its mode list is in `fdvflags.sh`.
 - `build.sh`: the whole build, no Gradle. `setup.sh`: SDK install. `dist/`: the current APK.
 
 ## Licences
 
+- RADE C port (FreeDV project, V1 files only): BSD, two clauses, `third_party/rade_c/LICENSE`
 - Opus 1.6.1 with DRED: BSD, three clauses, `COPYING-opus`, sources in `third_party/opus-1.6.1` (unchanged upstream files; the folder holds only what the build needs)
 - Codec 2 1.2 (the FreeDV modems): LGPL 2.1, `COPYING-codec2`, sources in `third_party/codec2-1.2` (unchanged upstream files)
 - Codec2Recorder by tschudin, starting point: MIT, `LICENSE-Codec2Recorder`

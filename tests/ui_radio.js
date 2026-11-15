@@ -1,8 +1,8 @@
-// Checks the page against a stub of the Android bridge: Record and Files tabs, DRED levels, old .c2 files. Live is hidden in 2.7.
+// Checks the page against a stub of the Android bridge: Record, RADE and Files tabs, DRED levels, old .c2 files.
 // Writes ui_record.png, ui_settings.png, ui_files.png.
 // Run: node tests/ui_radio.js
 const { chromium } = require('playwright'); const path = require('path');
-const STUB = `window.__c=[];window.__radio={on:false,op:'',talk:false,sent:0,frames:0,got:0,needed:0,sync:false,snr:0,level:0,left:0};
+const STUB = `window.__c=[];window.__radio={on:false,op:'',talk:false,sent:0,frames:0,got:0,needed:0,sync:false,snr:0,level:0,left:0,secs:0,total:0,message:0};
 window.Android=new Proxy({},{get:(t,k)=>(...a)=>{__c.push(k+':'+a.join(','));
  if(k=='microphones')return JSON.stringify([{id:7,name:'Phone microphone (bottom)'},{id:9,name:'USB'}]);
  if(k=='list')return JSON.stringify([{name:'2026-11-03_16-10-00_DRED-small.dred',mode:'DRED small',secs:30,bytes:2632,time:2,old:false},{name:'long_DRED-small.dred',mode:'DRED small',secs:300,bytes:19000,time:1,old:false},{name:'2026-11-01_09-00-00_700C.c2',mode:'Codec 2, older version',secs:0,bytes:6407,time:0,old:true}]);
@@ -19,7 +19,7 @@ window.Android=new Proxy({},{get:(t,k)=>(...a)=>{__c.push(k+':'+a.join(','));
   await wait();
   // Record tab: lean by default, settings fold out, recording still starts with the same calls
   check(await vis('#recb') && !await vis('#mic') && !await vis('#live') && !await vis('#files'), 'record tab default');
-  check(!await vis('#tabs button[data-t=live]'), 'Live tab hidden in 2.7');
+  check(await pg.innerText('#tabs button[data-t=live]') === 'RADE', 'RADE tab shown');
   check(await pg.inputValue('#mode') === 'small', 'stored Codec 2 mode falls back to DRED small: ' + await pg.inputValue('#mode'));
   const opts = await pg.$$eval('#mode option', o => o.map(x => x.value + '=' + x.textContent));
   check(opts.length === 4 && opts[0].startsWith('best=DRED best') && opts[3].startsWith('smallest='), 'four DRED levels: ' + opts.join(' | '));
@@ -59,9 +59,30 @@ window.Android=new Proxy({},{get:(t,k)=>(...a)=>{__c.push(k+':'+a.join(','));
   check((await pg.innerText('#fsig')).includes('Frame 12 of 36'), 'sending view');
   await set("Object.assign(__radio,{on:false,op:''})"); await wait();
   check((await pg.innerText('#fst')).includes('READY') && await vis('#frx'), 'ready again');
+  // RADE tab: record a message, then play, hear as RADE, send; listen
+  await pg.click('#tabs button[data-t=live]'); await wait();
+  check(await vis('#rrec') && await vis('#rlisten') && !await vis('#list') && await pg.isDisabled('#rsend') && await pg.isDisabled('#rplay'), 'RADE tab: nothing to send before a message');
+  check((await pg.innerText('#lsig')).includes('No message'), 'no message text');
+  await pg.click('#rrec'); check((await calls()).includes('radeRecord:true'), 'radeRecord with Denoise ' + (await calls()).slice(-2));
+  await set("Object.assign(__radio,{on:true,op:'rade_rec',secs:7,total:60,level:.5})"); await wait();
+  check((await pg.innerText('#lst')) === 'RECORDING' && (await pg.innerText('#lsig')).includes('00:07 of 01:00') && await vis('#rstop') && !await vis('#rsend'), 'recording a message');
+  await pg.screenshot({ path: 'ui_rade_rec.png' });
+  await pg.click('#rstop'); check((await calls()).includes('radioStop:'), 'stop recording');
+  await set("Object.assign(__radio,{on:false,op:'',message:12})"); await wait();
+  check(!await pg.isDisabled('#rsend') && (await pg.innerText('#lsig')).includes('Message: 00:12'), 'message ready');
+  await pg.click('#rplay'); await pg.click('#rhear'); await pg.click('#rsend');
+  c = await calls(); check(c.includes('radePlay:false') && c.includes('radePlay:true') && c.includes('radeSend:'), 'play, hear as RADE, send ' + c.slice(-3));
+  await set("Object.assign(__radio,{on:true,op:'rade_send',secs:3,total:13,level:.7})"); await wait();
+  check((await pg.innerText('#lst')) === 'SENDING' && (await pg.innerText('#lsig')).includes('00:03 / 00:13 on air'), 'sending');
+  await set("Object.assign(__radio,{on:false,op:''})"); await wait();
+  await pg.check('#ralong'); await pg.click('#rlisten'); check((await calls()).includes('radeListen:true'), 'listen, playing along');
+  await set("Object.assign(__radio,{on:true,op:'rade_listen',sync:true,snr:3.4,secs:5,level:.4})"); await wait();
+  check((await pg.innerText('#lst')) === 'LISTENING' && (await pg.innerText('#lsig')).includes('Signal locked, SNR 3 dB'), 'listening view');
+  await pg.screenshot({ path: 'ui_rade.png' });
+  await set("Object.assign(__radio,{on:false,op:'',sync:false})"); await wait();
   for (const w of [320, 393]) { // nothing may stick out sideways on a narrow phone
     await pg.setViewportSize({ width: w, height: 700 });
-    for (const tb of ['deck', 'files']) {
+    for (const tb of ['deck', 'live', 'files']) {
       await pg.click(`#tabs button[data-t=${tb}]`);
       check(await pg.evaluate("document.documentElement.scrollWidth<=innerWidth && [...document.querySelectorAll('.deck:not([hidden]) *')].every(e=>e.getBoundingClientRect().right<=innerWidth+1)"), `fits width ${w} ${tb}`);
     }

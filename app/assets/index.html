@@ -48,7 +48,7 @@ input[type=text]{flex:1;min-width:0;min-height:40px;font:inherit;color:var(--fg)
 [hidden]{display:none!important}
 </style></head><body>
 <div id="app">
-  <div id="tabs"><button data-t="deck" class="on">RECORD</button><button data-t="live" hidden>LIVE</button><button data-t="files">FILES</button></div>
+  <div id="tabs"><button data-t="deck" class="on">RECORD</button><button data-t="live">RADE</button><button data-t="files">FILES</button></div>
   <div id="deck" class="deck">
     <div id="clock">00:00</div>
     <div id="size"></div>
@@ -66,12 +66,13 @@ input[type=text]{flex:1;min-width:0;min-height:40px;font:inherit;color:var(--fg)
     </div>
   </div>
   <div id="live" class="deck" hidden>
-    <div id="lst" class="big">OFF</div>
+    <div id="lst" class="big">READY</div>
     <div class="meter"><i id="lpi"></i></div><div id="lsig" class="m"></div>
-    <div id="lctl"><button id="lon">START</button><button id="ptt" disabled>TALK</button></div>
-    <label for="lmode">Mode<select id="lmode"><option value="10">FreeDV 700D (weakest signals)</option></select></label>
-    <label class="sw"><input type="checkbox" id="lec"> Cancel this phone's own sound while talking</label>
-    <div class="m">Tap TALK to transmit, tap again to listen. The phone's speaker goes to the radio's microphone, its microphone to the radio's speaker. Talking works best with a headset microphone, listening with earphones.</div>
+    <div class="ctl2"><button id="rrec">RECORD MESSAGE</button><button id="rstop" class="danger" hidden>STOP</button></div>
+    <div class="ctl2"><button id="rplay">PLAY</button><button id="rhear">HEAR AS RADE</button><button id="rsend">SEND</button></div>
+    <div class="ctl2"><button id="rlisten">LISTEN</button></div>
+    <label class="sw"><input type="checkbox" id="ralong"> Play while listening (earphones only)</label>
+    <div class="m">RADE is FreeDV's voice mode for weak signals: stations running FreeDV hear you, and you hear them. Record a message first, then SEND: the phone's speaker goes to the radio's microphone, and the phone's microphone stays off, so there is no feedback. HEAR AS RADE plays your message the way a station would hear it on a clean channel. LISTEN with the phone's microphone at the radio's speaker: each message received is saved to your recordings.</div>
   </div>
   <div id="files" class="deck" hidden>
     <div id="fst" class="big">READY</div>
@@ -181,7 +182,7 @@ let tab = "deck";
 // Speeds: name, bytes per frame, seconds per burst of 4 frames (measured), note.
 const RM = [["Fast, 980 bit/s", 510, 17.17, "good signal"], ["Robust, 320 bit/s", 126, 13.2, "weak signal"], ["Very robust, 87 bit/s", 54, 21.12, "very weak signal"]];
 RM.forEach((m, i) => { const o = document.createElement("option"); o.value = i; o.textContent = m[0] + ", " + m[3]; $("rmode").append(o); });
-$("rmode").value = "1"; $("rex").value = "50"; sel("rmode", "rmode"); sel("rex", "rex"); sel("lmode", "lmode"); opt("lec", "lec", false);
+$("rmode").value = "1"; $("rex").value = "50"; sel("rmode", "rmode"); sel("rex", "rex"); opt("ralong", "ralong", false);
 $("rmode").addEventListener("change", render); $("rex").addEventListener("change", render);
 function est(r) {
   const m = RM[+$("rmode").value], x = Math.max(0, +$("rex").value), k = Math.ceil((9 + new TextEncoder().encode(r.name).length + r.bytes) / (m[1] - 6));
@@ -196,20 +197,31 @@ for (const b of document.querySelectorAll("#tabs button")) b.addEventListener("c
 });
 const sig = r => r.sync ? "Signal locked, SNR " + r.snr.toFixed(0) + " dB" : "No signal";
 function radioTick(r) {
-  const live = r.on && r.op === "live", busy = r.on && !live;
-  $("lst").textContent = !live ? "OFF" : r.talk ? "TALKING" : "LISTENING"; $("lst").style.color = live && r.talk ? "var(--rec)" : "var(--fg)";
-  $("lon").textContent = live ? "STOP" : "START"; $("lon").disabled = busy; $("ptt").disabled = !live; $("ptt").classList.toggle("on", live && r.talk); $("ptt").textContent = live && r.talk ? "LISTEN" : "TALK";
-  $("lpi").style.width = (live ? Math.round(r.level * 100) : 0) + "%"; $("lsig").textContent = !live ? "" : r.talk ? "Sending your voice" : sig(r);
-  $("lmode").disabled = r.on; $("lec").disabled = r.on;
+  const rade = r.on && r.op.startsWith("rade_"), busy = r.on && !rade;
+  const L = {rade_rec: "RECORDING", rade_play: "PLAYING", rade_send: "SENDING", rade_listen: "LISTENING"};
+  $("lst").textContent = rade ? L[r.op] || "BUSY" : "READY"; $("lst").style.color = rade && (r.op === "rade_rec" || r.op === "rade_send") ? "var(--rec)" : "var(--fg)";
+  $("lpi").style.width = (rade ? Math.round(r.level * 100) : 0) + "%";
+  let info = r.message > 0 ? "Message: " + fmt(r.message) : "No message recorded yet";
+  if (rade && r.op === "rade_rec") info = fmt(r.secs) + " of " + fmt(r.total) + " at most";
+  if (rade && (r.op === "rade_play" || r.op === "rade_send")) info = fmt(r.secs) + " / " + fmt(r.total) + (r.op === "rade_send" ? " on air" : "");
+  if (rade && r.op === "rade_listen") info = sig(r) + " · voice " + fmt(r.secs) + " · mic " + Math.round(r.level * 100) + "%";
+  $("lsig").textContent = info;
+  $("rstop").hidden = !rade; for (const id of ["rrec", "rplay", "rhear", "rsend", "rlisten"]) $(id).hidden = rade;
+  for (const id of ["rplay", "rhear", "rsend"]) $(id).disabled = !(r.message > 0) || busy;
+  $("rrec").disabled = busy; $("rlisten").disabled = busy; $("ralong").disabled = r.on;
   let t = "READY", p = 0, d = "";
   if (busy && r.op === "send") { t = "SENDING"; p = r.frames ? r.sent / r.frames : 0; d = r.frames ? "Frame " + r.sent + " of " + r.frames + " · " + fmt(r.left) + " left" : "Frame " + r.sent + ", repeating until stopped"; }
   if (busy && r.op === "receive") { t = r.needed ? "RECEIVING" : "LISTENING"; p = r.needed ? r.got / r.needed : 0; d = (r.needed ? "Got " + r.got + " of " + r.needed + " needed · " : "") + sig(r) + " · mic " + Math.round(r.level * 100) + "%"; }
   if (busy && r.op === "tone") { t = "TEST TONE"; d = "Set the volume so the radio shows normal speech level, no ALC overload"; }
   $("fst").textContent = t; $("fpi").style.width = Math.round(p * 100) + "%"; $("fsig").textContent = d;
-  $("fstop").hidden = !busy; $("fany").hidden = busy; $("frx").hidden = busy; $("ftone").hidden = busy; $("rmode").disabled = r.on; $("rex").disabled = r.on;
+  $("fstop").hidden = !busy; $("fany").hidden = busy; $("frx").disabled = $("fany").disabled = $("ftone").disabled = rade; $("frx").hidden = busy; $("ftone").hidden = busy; $("rmode").disabled = r.on; $("rex").disabled = r.on;
 }
-$("lon").addEventListener("click", () => { say(""); if (was.radio && was.radio.on) A.radioStop(); else A.radioLive(+$("lmode").value, $("lec").checked, $("dn").checked); });
-$("ptt").addEventListener("click", () => A.radioTalk(!(was.radio && was.radio.talk)));
+$("rrec").addEventListener("click", () => { say(""); A.radeRecord($("dn").checked); });
+$("rstop").addEventListener("click", () => A.radioStop());
+$("rplay").addEventListener("click", () => { say(""); A.radePlay(false); });
+$("rhear").addEventListener("click", () => { say(""); A.radePlay(true); });
+$("rsend").addEventListener("click", () => { say(""); A.radeSend(); });
+$("rlisten").addEventListener("click", () => { say(""); A.radeListen($("ralong").checked); });
 $("frx").addEventListener("click", () => { say(""); A.radioReceive(+$("rmode").value); });
 $("fany").addEventListener("click", () => { say(""); A.radioSendFile(+$("rmode").value, Math.max(0, +$("rex").value), +$("rex").value < 0); });
 const rate = () => { const m = RM[+$("rmode").value], x = Math.max(0, +$("rex").value); $("rate").textContent = "about " + ((m[1] - 6) * 4 / m[2] * 60 / 1024 / (1 + x / 100)).toFixed(1) + " kB per minute at this speed and repair"; };

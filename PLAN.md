@@ -1,10 +1,17 @@
 # Codec2 Recorder plan
 
-Last updated: 2026-11-14 (part B built)
+Last updated: 2026-11-15 (RADE messages built, 2.8)
 
 ## Start here
 
-**Waiting for the owner: phone test of 2.7** (`dist/Codec2Recorder-2.7.apk`, released 2026-11-14 on the owner's word, installs over 2.6). DRED replaces Codec 2 in it (stage 9, part B, built 2026-11-14). Everything that touches Android audio is untested: recording, playback, saving WAV, compressing files, radio sending of `.dred`.
+**Waiting for the owner: phone test of 2.8** (`dist/Codec2Recorder-2.8.apk`, installs over 2.7). 2.8 adds RADE voice messages (stage 8, built 2026-11-15) to the DRED recordings of 2.7. Nothing that touches Android audio has run on a phone: recording, playback, saving WAV, compressing files, radio sending, and all of RADE.
+
+RADE phone test (stage 8):
+
+1. RADE tab: RECORD MESSAGE, say a sentence, STOP. PLAY, then HEAR AS RADE. Is HEAR AS RADE understandable? Does it stutter? (On a computer RADE decodes 30 times faster than real time; a phone is not measured.)
+2. Two phones, no radio: phone A SEND at about three quarters media volume, phone B LISTEN with its microphone 5 to 30 cm from A's speaker. Does B show "Signal locked" and an SNR, and does a recording "rx_RADE_..." appear in B's list when A finishes? How does it sound?
+3. Through a radio: A's speaker at the transmitter's microphone (or VOX), B or a FreeDV station listening. Does FreeDV (PC program, 2.x, RADE V1 mode) decode it? Does the phone decode a FreeDV station? Identify the station in plain voice or CW.
+4. LISTEN with Play while listening on earphones.
 
 Phone test list (stage 9, part B, step 10):
 
@@ -19,10 +26,10 @@ Phone test list (stage 9, part B, step 10):
 9. Which level would you use every day? Is q12 (smallest) still good on your own voice?
 10. With Denoise on and the default settings, does speech sound processed or pumping? On a computer the automatic level costs intelligibility with DRED (part B results); if you hear it, try SETTINGS: Rec level off auto, Compressor off.
 
-Next to build, no phone needed: part C, live voice with DRED over the FreeDV modem (2.8). After the phone test: stage 10.
+Live voice with DRED over the 700D modem (part C) is dropped: RADE does it better and FreeDV stations can hear it (stage 8). Next, no phone needed: real-time RADE talk (push to talk, with earphones), or FlatRaster over radio (stage 6). After the phone test: stage 10.
 
 - `main` holds 2.7 (merged 2026-11-14). Before stating what exists, still fetch and list all branches: newer work may sit on an unmerged branch.
-- Current release: 2.7, in `dist/`. 2.6 was never tested on a phone either (stage 1); its phone test is folded into the one above.
+- Current release: 2.8, in `dist/`. 2.6 was never tested on a phone either (stage 1); its phone test is folded into the one above.
 - FlatRaster (apk-codec2flatraster) has the same DRED voice and sound settings since its 0.15.
 - The session needs the Android SDK (`bash setup.sh`) and the signing keys to deliver an APK. Without them it can still do the computer steps.
 
@@ -41,8 +48,8 @@ Each stage ends with something that can be checked. Stages 1 to 3 need the owner
 | 5 | Two-way link | Receiver reports missing frames, sender resends only those; short text messages | Not started |
 | 6 | FlatRaster over radio | The same link in apk-codec2flatraster, with a low-bitrate Radio preset | Not started |
 | 7 | Side tracks, any time | Offline transcription; RNNoise comparison; background music removal | Plans below |
-| 8 | RADE: natural-sounding voice, live and as a saved message | RADE measured on a computer through the same simulated channels as 700D, and a decision made | Not started. Running the downloaded code needs the owner's approval |
-| 9 | DRED replaces Codec 2: recordings (2.7, released 2026-11-14), then live voice (2.8) | Part A: measured on a computer. Part B: the app records, plays, exports and sends `.dred`, and Codec 2 is gone. Part C: live voice with DRED through the FreeDV 700D modem | Part A done 2026-11-14 and the owner said go. Part B built and checked on a computer 2026-11-14, test build 2.7-test1 waiting for the phone test. Part C: the modem was shown to carry bytes on a computer; nothing built |
+| 8 | RADE: natural-sounding voice, live and as a saved message | RADE measured on a computer through the same simulated channels as 700D, and a decision made | RADE V1 measured 2026-11-15, better than 700D in every channel; record-then-send voice messages and listening built in 2.8. Waiting for the phone and radio test. Real-time talk not built |
+| 9 | DRED replaces Codec 2: recordings (2.7, released 2026-11-14), then live voice (2.8) | Part A: measured on a computer. Part B: the app records, plays, exports and sends `.dred`, and Codec 2 is gone. Part C dropped for RADE (stage 8) | Part A done 2026-11-14 and the owner said go. Part B built and checked on a computer 2026-11-14, test build 2.7-test1 waiting for the phone test. Part C: the modem was shown to carry bytes on a computer; nothing built |
 | 10 | After 2.7 is confirmed on the phone | DRED settings written into `CLAUDE.md`; app name decided | Not started |
 
 ### Stage 0a: project records
@@ -133,7 +140,44 @@ At 4 bits (60 kB per minute) Opus at 8 kbit/s is the same size, already in Andro
 
 Possibly a better tool for small natural-sounding recordings: DRED, the speech coder inside Opus that RADE grew out of. It is built to produce bits and uses the same vocoder (FARGAN). From the Opus 1.5 release page, checked 2026-11-14: one second of speech is carried as redundancy for about 12 to 32 kbit/s extra across 50 packets per second, which works out to about 0.24 to 0.64 kbit/s, or 1.8 to 4.8 kB per minute. It adds about 2 MB to the library and is off unless Opus is built with `--enable-dred`. The same page warns that DRED is not yet standardized and the 1.5 version will not match the final one. It is designed to ride inside normal Opus packets as backup against lost packets, not as a codec of its own; whether it can write a standalone file is not checked. Its sources are in that repository's Opus tree, but the app builds with it off.
 
-#### Steps
+#### Results, 2026-11-15
+
+The owner approved downloading and running RADE. Source: `freedv/rade_c` at c8a3dc1 (2026-10-07), the FreeDV project's C port, BSD 2-clause, in `third_party/rade_c` (V1 files only, unchanged; 47 MB of source, most of it network weights). Its README says V2 is not for use on air yet, so V2 is stubbed out (`app/jni/rade_v2_stub.c`), which saves about 3 MB per processor type.
+
+- Built against our Opus 1.6.1, not the Opus commit rade_c uses. One catch: Opus 1.6.1 sizes a convolution buffer in `dnn/nnet.c` for 1024 values and RADE's encoder needs more (found with AddressSanitizer: "buffer overflow detected"). rade_c's own build patches that line; `radeflags.sh` builds a patched copy (2048) and leaves `third_party/opus-1.6.1` unchanged. DRED output is byte-identical with the copy (`JT`).
+- One library for both: `libvoice.so` with DRED, RADE V1 and one copy of Opus, 4.9 to 5.0 MB per processor type. APK 14 MB.
+- The app's layer (`app/jni/radejni.c`, `Rade.java`) gives sample-identical modem sound and decoded speech to rade_c's `rade_tx_wav` and `rade_rx_wav` on 65 s of speech (`tests/dred/RA.java`). Getting there needed the same input clamping as the tool (a -32768 sample changed everything after it).
+- RADE V1 against Codec 2 700C in FreeDV 700D, `tests/rade/compare.py`, 65 s of English speech, STOI against the original, mean of 3 noise seeds (lowest to highest), scored in 5 s pieces each aligned on its own:
+
+| Channel | RADE V1 | Codec 2 700C in 700D |
+|---|---|---|
+| Clean | 0.85 | 0.73 |
+| Noise, SNR 5 dB | 0.84 | 0.73 |
+| Noise, SNR 2 dB | 0.83 | 0.73 |
+| Noise, SNR 0 dB | 0.81 | 0.35 (0.17 to 0.73) |
+| Noise, SNR -2 dB | 0.58 (0.17 to 0.79) | 0.33 (0.16 to 0.67) |
+| Noise, SNR -4 dB | 0.75 | 0.14 |
+| HF fading, SNR 5 dB | 0.76 (0.61 to 0.83) | 0.47 (0.17 to 0.62) |
+| HF fading, SNR 2 dB | 0.53 (0.19 to 0.81) | 0.44 (0.17 to 0.59) |
+| Speaker to mic, close, distorted, clocks 100 ppm apart, SNR 15 dB | 0.85 | 0.73 |
+| Speaker to mic, echo 5 dB below direct, SNR 10 dB | 0.83 | 0.73 |
+| Speaker to mic, echo as loud as direct | 0.60 (0.21 to 0.80) | 0.11 |
+
+  Near its limit (-2 dB, fading at 2 dB, heavy echo) RADE either decodes a whole run well or fails for the whole run; that is why those cells range so widely. -4 dB came out better than -2 dB with these three seeds; more seeds would be needed to say where the edge is. RADE's decoded voice comes out about 0.4 s early in rade_rx_wav (the tool trims its start-up), so scoring has to search both ways.
+- Speed on this computer with the app's generic flags: coding 210 times faster than real time, decoding 30 times. Not measured on a phone.
+- The receiver reports the sender's end-of-over frame (checked with noise after the message), which is how LISTEN knows a message has ended.
+
+Built in 2.8, RADE tab:
+
+- RECORD MESSAGE: microphone through the recording voice chain and settings, up to 60 s, kept in the app's cache.
+- PLAY (as recorded) and HEAR AS RADE (coded and decoded inside the phone).
+- SEND: half a second of coded silence (opens a VOX), the message, RADE's end-of-over. Only the speaker runs, so no feedback.
+- LISTEN: microphone at 8 kHz (Unprocessed where the phone has it), RADE decoded as it arrives; each message (ended by end-of-over, or 3 s after the signal is lost) is saved to the recordings as `rx_RADE_..._DRED-best.dred`. Play while listening plays it at once, for earphones.
+- The 700D live-voice code (Codec 2 over 700D) is removed; the modem library keeps 700D for the tests.
+
+Not done: real-time talk (RADE needs speech in and modem sound out at once; with earphones and a radio's VOX it could work), a waveform check against a real FreeDV station, speed on a phone. The LISTEN logic that ends a message is only exercised through its parts on a computer (`RA` with noise after the message), not as a whole.
+
+#### Steps (as planned on 2026-11-14)
 
 1. Owner approves running the downloaded RADE code on the computer.
 2. Build the RADE library from that repository for the computer. Check its output against the app's own test vectors if it has them.

@@ -19,13 +19,13 @@ import java.io.FileOutputStream;
 import java.nio.file.Files;
 
 /** Radio link by sound: the phone's speaker plays into the transmitter's microphone, the phone's microphone listens to the receiver's speaker.
- *  One job at a time: send a file, receive files, live voice, or a test tone. Runs as a foreground service so it continues with the screen off. */
+ *  One job at a time: send a file, receive files, a test tone, or RADE voice messages (record, play, send, listen). Runs as a foreground service so it continues with the screen off. */
 public class RadioService extends Service {
     static volatile boolean running, talk;
     static volatile String op = "", notice, error;
     static volatile int sent, frames, got, needed, framesOk, sync;
     static volatile float snr, level;
-    static volatile long startedMs; static volatile double totalSecs;
+    static volatile long startedMs; static volatile double totalSecs, secs;
     private static final String CH = "radio";
 
     @Override public IBinder onBind(Intent i) { return null; }
@@ -43,13 +43,16 @@ public class RadioService extends Service {
                 .addAction(new Notification.Action.Builder(null, "Stop", ps).build()).build();
         try { startForeground(2, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE); }
         catch (Exception e) { error = "Can't run the radio link in the background: " + e.getMessage(); stopSelf(); return START_NOT_STICKY; }
-        op = what; error = null; running = true; talk = false; sent = frames = got = needed = framesOk = sync = 0; snr = 0; level = 0; startedMs = System.currentTimeMillis(); totalSecs = 0;
+        op = what; error = null; running = true; talk = false; sent = frames = got = needed = framesOk = sync = 0; snr = 0; level = 0; startedMs = System.currentTimeMillis(); totalSecs = 0; secs = 0;
         final Intent args = in;
-        new Thread(() -> {
+        DredLib.thread(() -> { // RADE and DRED need the larger native stack
             try {
                 if ("send".equals(what)) send(args.getStringExtra("path"), args.getIntExtra("mode", 1), args.getIntExtra("extra", 50), args.getBooleanExtra("repeat", false));
                 else if ("receive".equals(what)) receive(args.getIntExtra("mode", 1));
-                else if ("live".equals(what)) live(args);
+                else if ("rade_rec".equals(what)) radeRecord(args);
+                else if ("rade_play".equals(what)) radePlay(args.getBooleanExtra("asRade", false));
+                else if ("rade_send".equals(what)) radeSend();
+                else if ("rade_listen".equals(what)) radeListen(args.getBooleanExtra("playAlong", false));
                 else if ("tone".equals(what)) { AudioTrack t = track(); try { while (running) RadioLink.tone((s, c) -> t.write(s, 0, c), 1.0, 8000); } finally { drop(t); } }
             } catch (Throwable e) { error = "Radio link stopped: " + e.getMessage(); }
             finally { running = false; talk = false; op = ""; level = 0; sync = 0; stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
@@ -125,45 +128,144 @@ public class RadioService extends Service {
         return "Received rx_" + clean + " (" + data.length + " bytes). Saved to Download/Codec2Recorder.";
     }
 
-    /** Live voice, one direction at a time. Hidden in 2.7: it still sends Codec 2 voice inside the FreeDV modem, at 8 kHz, and moves to DRED in 2.8 (PLAN.md stage 9, part C). Listening decodes the radio's sound; talking sends the microphone through the voice chain and the modem. */
-    private void live(Intent a) throws Exception {
-        long h = Radio.open(a.getIntExtra("mode", 10), 1);
-        if (h == 0) throw new IllegalStateException("the modem did not start");
-        final int ns = Radio.speechN(h), nm = Radio.modemN(h), cf = 320;
-        final int voiceSource = a.getBooleanExtra("echo", false) ? MediaRecorder.AudioSource.VOICE_COMMUNICATION : a.getIntExtra("source", MediaRecorder.AudioSource.VOICE_RECOGNITION);
-        VoiceChain chain = new VoiceChain(8000, VoiceChain.CEILING_C2, cf, a.getBooleanExtra("denoise", true), a.getDoubleExtra("floor", 0.18), a.getIntExtra("treble", 1), MainActivity.loadNoise(this, 8000), a.getIntExtra("rumble", 180), a.getDoubleExtra("lift", 6), a.getDoubleExtra("gate", 12), a.getDoubleExtra("comp", 3));
-        AudioTrack t = track(); AudioRecord rec = null; android.media.audiofx.AcousticEchoCanceler aec = null;
-        short[] sp = new short[ns], mod = new short[nm], part = new short[cf], in = new short[640], out = new short[8 * ns];
-        Limiter lim = new Limiter(31000, 64, 8000);
-        try {
-            boolean talking = !talk; // forces the microphone to open on the first pass
-            while (running) {
-                if (talking != talk) {
-                    talking = talk;
-                    if (aec != null) { aec.release(); aec = null; }
-                    if (rec != null) { try { rec.stop(); } catch (Exception ignored) {} rec.release(); }
-                    rec = mic(talking ? voiceSource : rawSource());
-                    if (talking && voiceSource == MediaRecorder.AudioSource.VOICE_COMMUNICATION && android.media.audiofx.AcousticEchoCanceler.isAvailable()) { aec = android.media.audiofx.AcousticEchoCanceler.create(rec.getAudioSessionId()); if (aec != null) aec.setEnabled(true); }
-                    sync = 0;
-                }
-                if (talking) {
-                    read(rec, sp, ns); if (!running) break;
-                    for (int p = 0; p < ns; p += cf) { System.arraycopy(sp, p, part, 0, cf); chain.process(part, RecService.gainDbLive, 5, 1); System.arraycopy(part, 0, sp, p, cf); }
-                    level = (float) chain.level;
-                    Radio.txVoice(h, sp, mod); t.write(mod, 0, nm);
-                } else {
-                    read(rec, in, in.length); if (!running) break;
-                    level = peak(in, in.length);
-                    int m = Radio.rxVoice(h, in, in.length, out);
-                    sync = Radio.sync(h); snr = Radio.snr(h);
-                    for (int i = 0; i < m; i++) out[i] = (short) Math.round(lim.process(out[i] * 2.0));
-                    if (m > 0) t.write(out, 0, m);
-                }
+    // ---- RADE voice messages: record first, then send, so the phone's microphone and speaker are never on together ----
+
+    /** The recorded message, 16 kHz speech, kept until the next one is recorded. */
+    static File message(android.content.Context c) { return new File(c.getCacheDir(), "rade_message.raw"); }
+    static double messageSecs(android.content.Context c) { return message(c).length() / 2.0 / Rade.SPEECH_FS; }
+    static final int MAX_MESSAGE_S = 60;
+
+    /** Records a message through the same voice chain and settings as a recording, up to MAX_MESSAGE_S. */
+    private void radeRecord(Intent a) throws Exception {
+        android.media.AudioDeviceInfo target = null; AudioRecord rec = null;
+        File tmp = new File(getCacheDir(), "rade_message.tmp");
+        try (java.io.BufferedOutputStream out = new java.io.BufferedOutputStream(new FileOutputStream(tmp))) {
+            int device = a.getIntExtra("device", 0), fs = Rade.SPEECH_FS, n = Recorder.CHUNK;
+            target = device != 0 ? RecService.route(this, device) : null;
+            int src = target != null && RecService.isBluetooth(target) && RecService.callRouted ? MediaRecorder.AudioSource.VOICE_COMMUNICATION : a.getIntExtra("source", MediaRecorder.AudioSource.VOICE_RECOGNITION);
+            int min = AudioRecord.getMinBufferSize(fs, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+            rec = new AudioRecord(src, fs, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, Math.max(min, 2 * fs));
+            if (rec.getState() != AudioRecord.STATE_INITIALIZED) throw new IllegalStateException("the microphone did not start");
+            if (target != null) rec.setPreferredDevice(target);
+            VoiceChain chain = new VoiceChain(fs, VoiceChain.CEILING_DRED, n, a.getBooleanExtra("denoise", true), a.getDoubleExtra("floor", 0.18), a.getIntExtra("treble", 1), MainActivity.loadNoise(this, fs), a.getIntExtra("rumble", 180), a.getDoubleExtra("lift", 6), a.getDoubleExtra("gate", 12), a.getDoubleExtra("comp", 3));
+            rec.startRecording();
+            short[] pcm = new short[n]; byte[] b = new byte[2 * n]; long samples = 0;
+            totalSecs = MAX_MESSAGE_S;
+            while (running && samples < (long) MAX_MESSAGE_S * fs) {
+                read(rec, pcm, n); if (!running) break;
+                chain.process(pcm, RecService.gainDbLive, RecService.sensitivity, RecService.holdSeconds);
+                level = (float) chain.level;
+                for (int i = 0; i < n; i++) { b[2 * i] = (byte) pcm[i]; b[2 * i + 1] = (byte) (pcm[i] >> 8); }
+                out.write(b); samples += n; secs = samples / (double) fs;
             }
         } finally {
-            if (aec != null) aec.release();
             if (rec != null) { try { rec.stop(); } catch (Exception ignored) {} rec.release(); }
-            drop(t); Radio.close(h);
+            try { RecService.unroute(this, target); } catch (Exception ignored) {}
         }
+        if (tmp.length() >= 2 * Rade.SPEECH_FS / 2) { tmp.renameTo(message(this)); notice = String.format(java.util.Locale.ROOT, "Message recorded, %.0f s. Play it, or send it.", messageSecs(this)); }
+        else { tmp.delete(); notice = "Too short: nothing kept"; }
+    }
+
+    private short[] loadMessage() throws java.io.IOException {
+        byte[] b = Files.readAllBytes(message(this).toPath()); short[] s = new short[b.length / 2];
+        java.nio.ByteBuffer.wrap(b).order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(s); return s;
+    }
+
+    /** Speech output at 16 kHz, for playing the message and received voice. */
+    private AudioTrack speechTrack() {
+        int min = AudioTrack.getMinBufferSize(Rade.SPEECH_FS, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        AudioTrack t = new AudioTrack.Builder()
+                .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                .setAudioFormat(new AudioFormat.Builder().setSampleRate(Rade.SPEECH_FS).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build())
+                .setBufferSizeInBytes(Math.max(min, 2 * Rade.SPEECH_FS)).setTransferMode(AudioTrack.MODE_STREAM).build();
+        t.play(); return t;
+    }
+    private static void write(AudioTrack t, short[] b, int n) { for (int o = 0; o < n && running; ) { int w = t.write(b, o, n - o); if (w < 0) throw new IllegalStateException("audio output error " + w); o += w; } }
+    private static void finish(AudioTrack t, long samples) throws InterruptedException {
+        t.stop(); long end = System.currentTimeMillis() + 3000;
+        while (running && t.getPlaybackHeadPosition() < samples && System.currentTimeMillis() < end) Thread.sleep(30);
+    }
+
+    /** Plays the message as recorded, or asRade: sent and received inside the phone, so it sounds as a station would hear it on a clean channel. */
+    private void radePlay(boolean asRade) throws Exception {
+        short[] sp = loadMessage(); totalSecs = sp.length / (double) Rade.SPEECH_FS;
+        Limiter lim = new Limiter(31000, 128, Rade.SPEECH_FS); AudioTrack t = speechTrack(); long played = 0;
+        try {
+            if (!asRade) {
+                short[] b = new short[Recorder.CHUNK];
+                for (int i = 0; i < sp.length && running; i += b.length) {
+                    int n = Math.min(b.length, sp.length - i);
+                    for (int k = 0; k < n; k++) b[k] = (short) Math.round(lim.process(sp[i + k] * 2.0)); // the same playback level as recordings
+                    write(t, b, n); played += n; secs = played / (double) Rade.SPEECH_FS;
+                }
+            } else try (Rade r = new Rade()) {
+                short[] m = r.send(sp, sp.length, 0), step = new short[Rade.STEP], out = new short[Rade.OUT_PER_STEP];
+                for (int i = 0; i < m.length && running; i += Rade.STEP) {
+                    int n = Math.min(Rade.STEP, m.length - i); System.arraycopy(m, i, step, 0, n);
+                    int k = r.receive(step, n, out);
+                    for (int j = 0; j < k; j++) out[j] = (short) Math.round(lim.process(out[j] * 2.0));
+                    write(t, out, k); played += k; secs = played / (double) Rade.SPEECH_FS; sync = r.sync() ? 1 : 0;
+                }
+            }
+            if (running) finish(t, played);
+        } finally { drop(t); }
+    }
+
+    /** Sends the message: RADE modem sound from the speaker, nothing from the microphone. Half a second of coded silence first opens a VOX. */
+    private void radeSend() throws Exception {
+        short[] sp = loadMessage(); short[] m;
+        try (Rade r = new Rade()) { m = r.send(sp, sp.length, 500); }
+        totalSecs = m.length / (double) Rade.MODEM_FS;
+        AudioTrack t = track();
+        try {
+            for (int i = 0; i < m.length && running; i += Rade.STEP) {
+                int n = Math.min(Rade.STEP, m.length - i); short[] part = java.util.Arrays.copyOfRange(m, i, i + n);
+                level = peak(part, n); write(t, part, n); secs = (i + n) / (double) Rade.MODEM_FS;
+            }
+            if (running) { finish(t, m.length); notice = String.format(java.util.Locale.ROOT, "Sent as RADE, %.0f s on air", totalSecs); }
+        } finally { drop(t); }
+    }
+
+    /** Listens for RADE. Each received message (until the sender's end-of-over, or 3 s after the signal is lost) is saved to the recordings as DRED best.
+     *  playAlong plays the voice as it arrives: use earphones, or the phone's speaker reaches its own microphone. */
+    private void radeListen(boolean playAlong) throws Exception {
+        AudioRecord rec = mic(rawSource()); AudioTrack t = playAlong ? speechTrack() : null; Limiter lim = new Limiter(31000, 128, Rade.SPEECH_FS);
+        java.io.ByteArrayOutputStream heard = new java.io.ByteArrayOutputStream(); int lostSteps = 0; int saved = 0;
+        try (Rade r = new Rade()) {
+            short[] in = new short[Rade.STEP], out = new short[Rade.OUT_PER_STEP];
+            while (running) {
+                read(rec, in, in.length); if (!running) break;
+                level = peak(in, in.length);
+                int k = r.receive(in, in.length, out);
+                boolean locked = r.sync(); sync = locked ? 1 : 0; if (locked) snr = r.snr();
+                for (int j = 0; j < k; j++) { short v = out[j]; heard.write(v & 255); heard.write((v >> 8) & 255); }
+                if (t != null && k > 0) { for (int j = 0; j < k; j++) out[j] = (short) Math.round(lim.process(out[j] * 2.0)); write(t, out, k); }
+                secs = heard.size() / 2.0 / Rade.SPEECH_FS;
+                lostSteps = locked ? 0 : lostSteps + 1;
+                boolean over = r.endOfOver() > 0 || (lostSteps >= 30 && heard.size() > 0);
+                if (over && heard.size() >= Rade.SPEECH_FS) { notice = saveHeard(heard.toByteArray()); saved++; heard.reset(); }
+                else if (over) heard.reset();
+            }
+            if (heard.size() >= Rade.SPEECH_FS) { notice = saveHeard(heard.toByteArray()); saved++; }
+        } finally {
+            try { rec.stop(); } catch (Exception ignored) {} rec.release(); if (t != null) drop(t);
+        }
+        if (saved == 0 && notice == null) notice = "No RADE message was received";
+    }
+
+    /** A received message joins the recordings, coded with DRED at the finest level so it loses as little as possible again. */
+    private String saveHeard(byte[] pcm) throws java.io.IOException {
+        String stamp = new java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", java.util.Locale.ROOT).format(new java.util.Date());
+        File out = new File(MainActivity.dir(this), "rx_RADE_" + stamp + "_DRED-best.dred");
+        int q = Dred.qOf("best"); short[] f = new short[Dred.FRAME];
+        try (java.io.BufferedOutputStream o = new java.io.BufferedOutputStream(new FileOutputStream(out)); DredLib.Coder c = new DredLib.Coder(q)) {
+            o.write(Dred.header(q));
+            for (int i = 0; i + 2 * Dred.FRAME <= pcm.length; i += 2 * Dred.FRAME) {
+                for (int k = 0; k < Dred.FRAME; k++) f[k] = (short) ((pcm[i + 2 * k] & 255) | (pcm[i + 2 * k + 1] << 8));
+                int n = c.frame(f); if (n >= 0) Dred.writeBlock(o, c.buf, n);
+            }
+            c.finish((b, n) -> Dred.writeBlock(o, b, n));
+        }
+        return String.format(java.util.Locale.ROOT, "Received a RADE message, %.0f s: saved as %s", pcm.length / 2.0 / Rade.SPEECH_FS, out.getName());
     }
 }

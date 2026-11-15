@@ -412,7 +412,8 @@ public class MainActivity extends Activity {
             double left = RadioService.totalSecs > 0 ? Math.max(0, RadioService.totalSecs - (System.currentTimeMillis() - RadioService.startedMs) / 1000.0) : 0;
             s.append(",\"radio\":{\"on\":").append(RadioService.running).append(",\"op\":").append(jq(RadioService.op)).append(",\"talk\":").append(RadioService.talk)
                     .append(",\"sent\":").append(RadioService.sent).append(",\"frames\":").append(RadioService.frames).append(",\"got\":").append(RadioService.got).append(",\"needed\":").append(RadioService.needed)
-                    .append(",\"sync\":").append(RadioService.sync != 0).append(",\"snr\":").append(Float.isFinite(RadioService.snr) ? RadioService.snr : 0).append(",\"level\":").append(RadioService.level).append(",\"left\":").append(left).append("}");
+                    .append(",\"sync\":").append(RadioService.sync != 0).append(",\"snr\":").append(Float.isFinite(RadioService.snr) ? RadioService.snr : 0).append(",\"level\":").append(RadioService.level).append(",\"left\":").append(left)
+                    .append(",\"secs\":").append(RadioService.secs).append(",\"total\":").append(RadioService.totalSecs).append(",\"message\":").append(RadioService.messageSecs(MainActivity.this)).append("}");
             s.append(",\"msg\":").append(msg == null ? "null" : jq(msg)).append("}");
             return s.toString();
         }
@@ -428,8 +429,11 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void radioSend(String name, int mode, int extra, boolean repeat) { radio(new Intent().putExtra("op", "send").putExtra("path", named(name).getPath()).putExtra("mode", mode).putExtra("extra", extra).putExtra("repeat", repeat)); }
         @JavascriptInterface public void radioReceive(int mode) { radio(new Intent().putExtra("op", "receive").putExtra("mode", mode)); }
         @JavascriptInterface public void radioTone() { radio(new Intent().putExtra("op", "tone")); }
-        @JavascriptInterface public void radioLive(int mode, boolean echo, boolean dn) { radio(new Intent().putExtra("op", "live").putExtra("mode", mode).putExtra("echo", echo).putExtra("denoise", dn).putExtra("source", source).putExtra("treble", treble).putExtra("floor", floorGain).putExtra("lift", liftDb).putExtra("rumble", rumbleHz).putExtra("gate", gateDb).putExtra("comp", compRatio)); }
-        @JavascriptInterface public void radioTalk(boolean on) { RadioService.talk = on; }
+        /** RADE voice messages: record with the recording settings, play (as recorded or as RADE), send, listen. */
+        @JavascriptInterface public void radeRecord(boolean dn) { radio(new Intent().putExtra("op", "rade_rec").putExtra("denoise", dn).putExtra("source", source).putExtra("device", device).putExtra("treble", treble).putExtra("floor", floorGain).putExtra("lift", liftDb).putExtra("rumble", rumbleHz).putExtra("gate", gateDb).putExtra("comp", compRatio)); }
+        @JavascriptInterface public void radePlay(boolean asRade) { if (RadioService.messageSecs(MainActivity.this) > 0) radio(new Intent().putExtra("op", "rade_play").putExtra("asRade", asRade)); else notice = "Record a message first."; }
+        @JavascriptInterface public void radeSend() { if (RadioService.messageSecs(MainActivity.this) > 0) radio(new Intent().putExtra("op", "rade_send")); else notice = "Record a message first."; }
+        @JavascriptInterface public void radeListen(boolean playAlong) { radio(new Intent().putExtra("op", "rade_listen").putExtra("playAlong", playAlong)); }
         @JavascriptInterface public void radioStop() { RadioService.running = false; }
         @JavascriptInterface public String list() {
             File[] fs = dir(MainActivity.this).listFiles();
