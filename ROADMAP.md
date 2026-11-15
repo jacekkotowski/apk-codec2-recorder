@@ -311,19 +311,37 @@ The runtime library must be linked by hand into this Gradle-free build (NCNN or 
 
 Each stage ends with something that can be checked. "Computer" means no phone is needed.
 
-| # | Stage | Done when | Needs |
-|---|---|---|---|
-| 0 | **Self-test and diagnostics** in both apps: speed of DRED and RADE coding and playing on this phone; modem loopback through the phone's own speaker and microphone at three volumes (frames received, signal-to-noise ratio, clipping); which video encoder the phone gives and its real bit rate; "save test clip" (30 s raw sound); "save what the microphone heard". One button, one text report to share | The owner runs it once and pastes the report. It answers most of the 2.7 and 2.8 phone lists without a second phone or a radio | Computer to build, phone to run |
-| 1 | **One repository, shared core, readable code** (D1). First record reference outputs in `tests/golden/` from today's code; then move and reformat; then split the activities, replace the global variables, unify the microphone loop and the settings object. Fix the list in 3.3. `tests/run.sh` runs everything; a GitHub workflow runs it on every push | Both apps build from one tree; reference outputs are byte-identical; no line over 120 characters; versions 2.9 and 0.16 behave exactly as 2.8 and 0.15 | Computer |
-| 2 | **Documents** (section 4) and the PC command-line program | A person can write a `.dred` reader from `docs/format-dred.md` alone; `tools/` receives a file from a WAV made by the app's tests | Computer |
-| 3 | **Sound**: the measuring rig with word counts and the owner's clips; the Natural profile; listener-side processing and playback speed; candidates of 5.4 one by one | A table: every profile and candidate, clean and noisy, Polish and English, STOI and wrong words. The owner's listening page. D3 decided and the confirmed settings written into `CLAUDE.md` | Computer, then the owner's ears |
-| 4 | **Interface**: Record, Send, Receive; presets and stages in signal order; help sheets; TRY; prices; obsolete text removed | The page tests pass against the new bridge; the owner can do each task without reading a paragraph | Computer, then phone |
-| 5 | **Radio by hand**: LISTEN for all modes, link check, manual keying and overs, call sign, text, position, picture to fit, "need N more"; SSB, FM and CB channel models | Every payload passes the new channel models at the speeds the tables name; a text passes at the very robust speed in under a minute | Computer, then two phones, then radios |
-| 6a | **Picture coder measurement** | A table: prototype coder against AV1 on the existing clips. D8 decided | Computer |
-| 6b | **Free legibility** (7.2) and face crop, eye hold, sketch (7.3) | Each step has a before-and-after figure for bytes and for border quality, as FlatRaster's tests already produce | Computer, then phone |
-| 6c | **The coder in the app**, still background, `.frv` version 3 with short packet headers (old files still play) | A 30 s recording is under half its present size at equal legibility | Computer, then phone |
-| 6d | **Postcard, slideshow, document** over the radio link from the shared core | A postcard passes phone to phone at the robust speed in under 2 minutes | Two phones |
-| 7 | **Options**, each on its own decision: transcription to text (try Android's own offline recogniser first, it adds nothing to the app; whisper.cpp second); person cut-out; cable and keying; real-time RADE; RADE V2; two-way link | | |
+| # | Stage | Done when | Needs | Model |
+|---|---|---|---|---|
+| 0 | **Self-test and diagnostics** in both apps: speed of DRED and RADE coding and playing on this phone; modem loopback through the phone's own speaker and microphone at three volumes (frames received, signal-to-noise ratio, clipping); which video encoder the phone gives and its real bit rate; "save test clip" (30 s raw sound); "save what the microphone heard". One button, one text report to share | The owner runs it once and pastes the report. It answers most of the 2.7 and 2.8 phone lists without a second phone or a radio | Computer to build, phone to run | Sonnet |
+| 1 | **One repository, shared core, readable code** (D1). First record reference outputs in `tests/golden/` from today's code; then move and reformat; then split the activities, replace the global variables, unify the microphone loop and the settings object. Fix the list in 3.3. `tests/run.sh` runs everything; a GitHub workflow runs it on every push | Both apps build from one tree; reference outputs are byte-identical; no line over 120 characters; versions 2.9 and 0.16 behave exactly as 2.8 and 0.15 | Computer | Stronger model for the first step (reference outputs, the folder layout, the interfaces between layers); Sonnet for moving, reformatting and splitting under those tests |
+| 2 | **Documents** (section 4) and the PC command-line program | A person can write a `.dred` reader from `docs/format-dred.md` alone; `tools/` receives a file from a WAV made by the app's tests | Computer | Sonnet |
+| 3 | **Sound**: the measuring rig with word counts and the owner's clips; the Natural profile; listener-side processing and playback speed; candidates of 5.4 one by one | A table: every profile and candidate, clean and noisy, Polish and English, STOI and wrong words. The owner's listening page. D3 decided and the confirmed settings written into `CLAUDE.md` | Computer, then the owner's ears | Stronger model |
+| 4 | **Interface**: Record, Send, Receive; presets and stages in signal order; help sheets; TRY; prices; obsolete text removed | The page tests pass against the new bridge; the owner can do each task without reading a paragraph | Computer, then phone | Sonnet |
+| 5 | **Radio by hand**: LISTEN for all modes, link check, manual keying and overs, call sign, text, position, picture to fit, "need N more"; SSB, FM and CB channel models | Every payload passes the new channel models at the speeds the tables name; a text passes at the very robust speed in under a minute | Computer, then two phones, then radios | Stronger model for the channel models, LISTEN for all modes and "need N more"; Sonnet for text, call sign, keying, overs and the page |
+| 6a | **Picture coder measurement** | A table: prototype coder against AV1 on the existing clips. D8 decided | Computer | Stronger model |
+| 6b | **Free legibility** (7.2) and face crop, eye hold, sketch (7.3) | Each step has a before-and-after figure for bytes and for border quality, as FlatRaster's tests already produce | Computer, then phone | Stronger model |
+| 6c | **The coder in the app**, still background, `.frv` version 3 with short packet headers (old files still play) | A 30 s recording is under half its present size at equal legibility | Computer, then phone | Stronger model |
+| 6d | **Postcard, slideshow, document** over the radio link from the shared core | A postcard passes phone to phone at the robust speed in under 2 minutes | Two phones | Sonnet |
+| 7 | **Options**, each on its own decision: transcription to text (try Android's own offline recogniser first, it adds nothing to the app; whisper.cpp second); person cut-out; cable and keying; real-time RADE; RADE V2; two-way link | | | Named when each option is decided |
+
+### 9.1 Which model does which stage
+
+"Sonnet" is the cheaper, faster model; "stronger model" means the most capable one available (Opus class or above). The split follows one question: can a test catch a mistake?
+
+- **Sonnet** where the work is spelled out and a test guards it: moving and reformatting code under `tests/golden/`, the page and its bridge, documents, the self-test screen, wiring features to the core.
+- **Stronger model** where a wrong but plausible result would be written into the plan and built on: sound and picture measurements, the picture coder, channel models, the design of interfaces between layers, and faults in the native layers.
+
+How the switch is made, either way:
+
+1. The owner picks the model when starting the session (`/model`, or the model picker in the app). Each session says at its start which model it runs on and whether that fits the stage it is about to do.
+2. A session on the stronger model hands a Sonnet stage to a Sonnet helper (the session can start one itself), then checks the result: `tests/run.sh` must pass, reference outputs included, before anything is committed.
+
+Rules for a Sonnet session or helper:
+
+- It may not change a sound or picture default, a file format, or a number in the plan's tables.
+- It stops and writes the problem into `PLAN.md` "Start here", for a stronger-model session, when: a reference output differs and the cause is not obvious; a native library crashes or gives different output; a measurement disagrees with a table in the plans.
+- Its work is accepted only with the whole test run passing.
 
 What can run side by side: stages 0 to 2 need no decisions beyond D1. Stage 3 and stage 6a are independent measurements. Stages 4 and 5 should follow stage 1, because they rewrite the page and the bridge.
 

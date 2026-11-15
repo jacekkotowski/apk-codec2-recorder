@@ -26,6 +26,7 @@ The voice chain keeps the 2.4 behaviour at 16 kHz: same filter corners and time 
 
 1. Fetch and list all branches before saying what exists: newer work may sit on an unmerged branch. `main` should hold everything.
 2. Read `PLAN.md` "Start here".
+   If the work is a stage of `ROADMAP.md`: its section 9 names the model for each stage (Sonnet, or the stronger model). Say at the start which model the session runs on (`get_session`) and whether it fits; a session on the stronger model may hand a Sonnet stage to a Sonnet helper and check the result. Keep model names out of commit messages.
 3. To build: `bash setup.sh` once, then attach `apk-signing-keys` and copy `apk-codec2-recorder/c2.keystore` and `signing.env` into this folder, then `source ./env.sh && bash build.sh`.
 4. Computer tests need `pip install numpy scipy pystoi` and, for the speech measurements, 16 kHz 16-bit mono `.raw` speech files. Last time they came from whisper.cpp's `samples/jfk.wav` (raw.githubusercontent.com) and the `wav/` folder of `drowe67/radae` (git clone works; GitHub's archive downloads were refused).
 5. In a cloud session on Auto mode, the safety check may refuse to run programs built from downloaded code; the owner switches the mode to "Accept edits" and approves.
