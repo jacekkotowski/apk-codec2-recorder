@@ -84,14 +84,15 @@ window.Android=new Proxy({},{get:(t,k)=>(...a)=>{__c.push(k+':'+a.join(','));
   // TEST tab: buttons call the bridge, the report is shown, SHARE REPORT waits for a report
   await pg.setViewportSize({ width: 393, height: 800 });
   await pg.click('#tabs button[data-t=test]'); await pg.waitForTimeout(1200);
-  check(await vis('#trun') && await vis('#tclip') && !await vis('#recb') && !await vis('#list') && await pg.isDisabled('#tshare'), 'test tab default');
+  check(await vis('#trun') && await vis('#tclip') && !await vis('#recb') && !await vis('#list') && await pg.isDisabled('#tshare') && await pg.isDisabled('#tcopy'), 'test tab default');
   await pg.click('#trun'); await pg.click('#tclip');
   check((await calls()).includes('testRun:') && (await calls()).includes('testClip:'), 'test buttons call the bridge');
   await set("Object.assign(__t,{on:true,step:'Speed: RADE',text:'Self-test\\nPhone: X'})"); await pg.waitForTimeout(1300);
-  check((await pg.innerText('#tst')) === 'RUNNING' && await vis('#tstop') && !await vis('#trun') && (await pg.innerText('#trep')).includes('Speed: RADE'), 'test running view');
+  check((await pg.innerText('#tst')) === 'RUNNING' && await vis('#tstop') && !await vis('#trun') && (await pg.innerText('#trep')).includes('Speed: RADE') && !await pg.isDisabled('#tcopy'), 'test running view, partial report can be copied');
   await set("Object.assign(__t,{on:false,done:true,step:'',text:'Self-test\\nPhone: X\\nEnd of report.'})"); await pg.waitForTimeout(1300);
   check(!await pg.isDisabled('#tshare') && (await pg.innerText('#trep')).includes('End of report.'), 'finished report can be shared');
   await pg.click('#tshare'); check((await calls()).includes('testShare:'), 'share calls the bridge');
+  check(!await pg.isDisabled('#tcopy'), 'copy is on once there is a report'); await pg.click('#tcopy'); check((await calls()).includes('testCopy:'), 'copy calls the bridge');
   await pg.screenshot({ path: 'ui_test.png' });
   for (const w of [320, 393]) { // nothing may stick out sideways on a narrow phone
     await pg.setViewportSize({ width: w, height: 700 });

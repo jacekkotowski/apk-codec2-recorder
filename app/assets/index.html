@@ -86,9 +86,9 @@ input[type=text]{flex:1;min-width:0;min-height:40px;font:inherit;color:var(--fg)
   <div id="test" class="deck" hidden>
     <div id="tst" class="big">READY</div>
     <div class="ctl2"><button id="trun">RUN SELF-TEST</button><button id="tclip">SAVE TEST CLIP</button><button id="tstop" class="danger" hidden>STOP</button></div>
-    <div class="ctl2"><button id="tshare" disabled>SHARE REPORT</button></div>
+    <div class="ctl2"><button id="tcopy" disabled>COPY REPORT</button><button id="tshare" disabled>SHARE REPORT</button></div>
     <pre id="trep" class="m" style="white-space:pre-wrap;overflow-wrap:anywhere;margin:0">No report yet.</pre>
-    <div class="m">RUN SELF-TEST takes about three minutes. Put the phone on a table in a quiet room with the media volume at about three quarters and leave it alone; the screen stays on. It times the voice chain, DRED and RADE on this phone, then plays modem sound from the speaker and listens with the microphone. SAVE TEST CLIP records 30 s of the microphone with no processing: say a few sentences, then keep quiet for 5 s. Both save a file in Download/Codec2Recorder.</div>
+    <div class="m">RUN SELF-TEST takes about three minutes. Put the phone on a table in a quiet room with the media volume at about three quarters and leave it alone; the screen stays on. It times the voice chain, DRED and RADE on this phone, then plays modem sound from the speaker and listens with the microphone. SAVE TEST CLIP records 30 s of the microphone with no processing: say a few sentences, then keep quiet for 5 s. Both save a file in Download/Codec2Recorder. The report is also kept inside the app, so it is still here when you come back from pasting it: COPY REPORT, switch to your chat, paste.</div>
   </div>
   <div id="msg" role="status"></div>
   <div id="bar"><span id="count"></span><span class="btns"><button id="cmp">COMPRESS AUDIO</button> <button id="imp">OPEN .DRED</button></span></div>
@@ -239,12 +239,13 @@ $("fstop").addEventListener("click", () => A.radioStop());
 function testTick() {
   const t = JSON.parse(A.testState());
   $("tst").textContent = t.on ? "RUNNING" : "READY"; $("tstop").hidden = !t.on; $("trun").hidden = t.on; $("tclip").hidden = t.on;
-  $("trep").textContent = (t.step ? t.step + "\n\n" : "") + (t.text || "No report yet."); $("tshare").disabled = !t.text || t.on;
+  $("trep").textContent = (t.step ? t.step + "\n\n" : "") + (t.text || "No report yet."); $("tshare").disabled = $("tcopy").disabled = !t.text;
 }
 $("trun").addEventListener("click", () => { say(""); A.testRun(); });
 $("tclip").addEventListener("click", () => { say(""); A.testClip(); });
 $("tstop").addEventListener("click", () => A.testStop());
 $("tshare").addEventListener("click", () => A.testShare());
+$("tcopy").addEventListener("click", () => A.testCopy());
 setInterval(() => { if (tab === "test") testTick(); }, 1000);
 let last = { play: null, pos: 0, dur: 0 };
 function render() {

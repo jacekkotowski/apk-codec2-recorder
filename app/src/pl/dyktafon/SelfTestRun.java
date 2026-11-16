@@ -23,6 +23,21 @@ final class SelfTestRun {
     private static volatile boolean running, cancel, done;
     private static volatile String step = "";
 
+    private static Context app;
+    private static final String KEEP = "selftest_last.txt";
+    /** The report is also kept in the app's own folder, so it is still there after Android closes the app or the page reloads. */
+    private static void keep(Context c) {
+        try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(c.getFilesDir(), KEEP))) { o.write(report().getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
+        catch (Exception ignored) {}
+    }
+    /** At start: brings back the last report if this process has none. */
+    static void restore(Context c) {
+        if (running || report().length() > 0) return;
+        try {
+            byte[] b = java.nio.file.Files.readAllBytes(new java.io.File(c.getFilesDir(), KEEP).toPath());
+            synchronized (SelfTestRun.class) { if (text.length() == 0) text.append(new String(b, java.nio.charset.StandardCharsets.UTF_8)); }
+        } catch (Exception ignored) {}
+    }
     static synchronized String report() { return text.toString(); }
     private static synchronized void add(String s) { text.append(s).append('\n'); }
     static boolean running() { return running; }
@@ -42,6 +57,7 @@ final class SelfTestRun {
 
     /** Full self-test: device, speed, modem loop. onDone runs on the worker thread when it ends. */
     static void runAll(Context c, Runnable onDone) {
+        app = c.getApplicationContext();
         synchronized (SelfTestRun.class) { text.setLength(0); }
         begin("Starting");
         DredLib.thread(() -> {
@@ -53,7 +69,7 @@ final class SelfTestRun {
                 part("Modem loop through the speaker and microphone", () -> modemLoop(c));
                 add(""); add(cancel ? "Stopped before the end." : "End of report.");
                 saveReport(c);
-            } finally { running = false; done = true; step = ""; onDone.run(); }
+            } finally { keep(c); running = false; done = true; step = ""; onDone.run(); }
         }, "selftest").start();
     }
 
@@ -63,10 +79,12 @@ final class SelfTestRun {
         if (cancel) return;
         step = title; add(""); add("== " + title + " ==");
         try { p.run(); } catch (Throwable e) { add("FAILED: " + e); }
+        if (app != null) keep(app); // what is done so far survives if the app is closed in the middle
     }
 
     /** 30 seconds of the microphone with no processing by the app, saved as a WAV file for tests on a computer. */
     static void clip(Context c, int source, Runnable onDone) {
+        app = c.getApplicationContext();
         synchronized (SelfTestRun.class) { text.setLength(0); }
         begin("Test clip");
         DredLib.thread(() -> {
@@ -92,7 +110,7 @@ final class SelfTestRun {
                 add("Saved to Download/Codec2Recorder/" + name);
                 saveReport(c);
             } catch (Throwable e) { add("FAILED: " + e); }
-            finally { if (rec != null) { try { rec.stop(); } catch (Exception ignored) {} rec.release(); } running = false; done = true; step = ""; onDone.run(); }
+            finally { if (rec != null) { try { rec.stop(); } catch (Exception ignored) {} rec.release(); } keep(c); running = false; done = true; step = ""; onDone.run(); }
         }, "testclip").start();
     }
 

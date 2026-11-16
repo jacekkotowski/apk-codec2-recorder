@@ -130,6 +130,7 @@ public class MainActivity extends Activity {
             });
         } else root.setFitsSystemWindows(true);
         setContentView(root);
+        SelfTestRun.restore(this);
         new File(getFilesDir(), "noise.bin").delete(); // 2.6's 8 kHz noise sample
         web.loadUrl("file:///android_asset/index.html");
     }
@@ -559,6 +560,12 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void testRun() { runOnUiThread(() -> startTest(false)); }
         @JavascriptInterface public void testClip() { runOnUiThread(() -> startTest(true)); }
+        @JavascriptInterface public void testCopy() {
+            runOnUiThread(() -> {
+                getSystemService(android.content.ClipboardManager.class).setPrimaryClip(android.content.ClipData.newPlainText("Self-test report", SelfTestRun.report()));
+                notice = "Report copied. Paste it where you want it.";
+            });
+        }
         @JavascriptInterface public void testStop() { SelfTestRun.cancel(); }
         @JavascriptInterface public void testShare() {
             runOnUiThread(() -> startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, SelfTestRun.report())
