@@ -1,25 +1,38 @@
 # Codec2 Recorder plan
 
-Last updated: 2026-11-15 (stage 0 of ROADMAP.md built: self-test, 2.8.1)
+Last updated: 2026-11-16 (stage 6a of ROADMAP.md measured: the picture coder; no change to either app)
 
 ## Start here
 
-## Next session: stage 6a, the picture coder measurement (planned 2026-11-16, not started)
+## Stage 6a result: the picture coder measurement (2026-11-16)
 
-**Why.** The first phone report (FlatRaster 0.15.2, see its `PLAN.md`) shows the phone's video encoders make 3.2 to 4.0 kbit/s when 2 is asked, and 12 to 18 kB for 30 s of the made-up scene: too much for a radio link. ROADMAP.md 7.4 proposes a coder made for flat pictures (palette indices, predicted from the neighbours, arithmetic coded). Stage 6a decides, by measurement, whether to build it (D8).
+Done as planned on 2026-11-16, on the stronger model (ROADMAP.md 9.1): computer only, nothing changed in either app, no APK. Tools, full table, limits: `apk-codec2flatraster`, `tools/coder/` (`bash tools/coder/run.sh` repeats it) and its `PLAN.md`, "Stage 6a".
 
-**Rules for the session.** Model: the stronger one (ROADMAP.md 9.1); say at the start which model runs. Computer only: no phone, no owner tests, no change to either app, no new buttons or features, no APK. One session, one result. If a step takes more than expected, stop and write what is known into this file instead of widening the work. Attach `apk-codec2flatraster` (the data and scene are there) and read `ROADMAP.md` here; the keys are not needed.
+**Question (D8):** would a small coder made for posterized pictures (ROADMAP.md 7.4) need clearly fewer bytes than the phone's video encoder? **Rule set beforehand:** build it only if it makes about half the bytes, or fewer, on both full and delta pictures across the clips.
 
-**Steps.**
-1. Fetch and list branches in both repositories. Read `PLAN.md` "Start here" in both, ROADMAP.md 7.1, 7.4, 9 (stage 6a) and FlatRaster's "What was measured".
-2. Make the input frames: the same made-up scene the self-test used (`PictureTest.scene`, 640x480 to 320x240, 8 colours, 60 pictures at 2 per second), after the real posterize filter (`jni/flat.c`, `tests/selftest/run.sh` builds it for a computer). Also use any clips the FlatRaster tests already produce (`tests/flat_test.py`, `motion_test.py`, `tools/bench.py`). Save the posterized pictures as palette-index maps plus palettes.
-3. Write a prototype in Python (`tools/` in FlatRaster, not in the app): (a) key picture: palette, then each index predicted from left, above, above-left, above-right, adaptive arithmetic coder; (b) delta picture: a change map coded the same way, then the new indices for changed pixels. Check it decodes to exactly the input.
-4. Measure bytes for the same 30 s and the same pictures: the prototype, against AV1, HEVC and H.264 on the computer (as FlatRaster's measurements did), and against the phone's figures (AV1 17.8 kB, HEVC 18.2 kB, H.264 14.1 kB at 5 kbit/s asked; 14.9, 14.7, 11.9 kB at 2 asked; full pictures 0.9 to 1.5 kB).
-5. Report in one table: key picture bytes, delta picture bytes, total for 30 s, per coder, with the scene named. State the limits plainly: the scene is synthetic and real camera noise costs more; the prototype codes the posterized labels exactly while the video encoders are lossy on top, so say what that does to the comparison; the phone's hardware encoders were not tested.
-6. Recommendation for D8 with a rule stated beforehand: build the coder only if it makes clearly fewer bytes (about half, or better) on both key and delta pictures across the clips. The owner decides.
-7. Write the result into `PLAN.md` in both repositories and the stage 6a row of ROADMAP.md, commit and push to `main`, and hand the owner the table in the chat. Do not start stage 6b or 6c.
+**Answer: no, not as the video coder.** The prototype codes the pictures exactly. The self-test scene (30 s, 60 pictures of 320x240 in 8 colours, a full picture every 10 s):
 
-**Start message for the owner to paste:** "Przeczytaj CLAUDE.md, PLAN.md (sekcja 'Next session: stage 6a') i ROADMAP.md. Zrób dokładnie ten plan, bez dodatków, bez zmian w aplikacjach. Podłącz apk-codec2flatraster."
+| Coder | Bytes per full picture | Bytes per delta picture | 30 s | Picture after decoding |
+|---|---|---|---|---|
+| **Prototype** | **290** | **145** | **9.1 kB** | exact |
+| Phone, H.264 software, asked 2 and 5 kbit/s | 900 to 1500 (all phone coders) | about 130 to 160, and 170 to 200 | 11.9 and 14.1 kB | not measured |
+| Phone, HEVC software, asked 2 and 5 kbit/s | | about 180 to 210, and 240 to 270 | 14.7 and 18.2 kB | not measured |
+| Phone, AV1 software, asked 2 and 5 kbit/s | | about 180 to 215, and 235 to 265 | 14.9 and 17.8 kB | not measured |
+| Computer H.264 (x264 veryslow, step 40) | 907 | 91 | 7.9 kB | 0.44% of pixels visibly off |
+| Computer HEVC (x265 slow, step 40) | 806 | 95 | 7.8 kB | 0.19% |
+| Computer AV1 (svt-av1 preset 4, step 45) | 695 | 73 | 6.2 kB | 0.15% |
+| Computer AV1 (libaom cpu 4, step 45) | 493 | 76 | 5.8 kB | 0.13% |
+
+The phone's delta sizes are worked out from its totals (the report gave totals and full pictures only). Four more scenes from FlatRaster's tests are in its `PLAN.md`.
+
+- Full pictures: a clear win on this scene only (a third to a fifth of the phone's). On the other four scenes the prototype's full pictures are 0.55 to 1.85 times the computer encoders'.
+- Delta pictures: the prototype is 1.2 to 3.9 times the computer encoders on every scene where something moves, and level with the phone's H.264 at 2 kbit/s asked. It wins only when nothing moves (1 byte). Reason: it pays about 2.4 bits for every pixel on a border that moved, while a video encoder shifts blocks of the previous picture and may be slightly wrong.
+- 30 s: 23 to 50% less than the phone made, 15 to 57% more than computer encoders of the same formats.
+- Limits: all scenes are synthetic, and real camera noise is likely to cost an exact coder more than a lossy one; the comparison is exact against lossy (figures for nearly exact video are in FlatRaster's `PLAN.md`); the computer encoders ran at slow settings and are not in the app; the phone's hardware encoders and the quality of the phone's output were not measured.
+
+**Recommendation for D8 (the owner decides):** by the rule, do not build this coder as FlatRaster's video coder (stage 6c's first item). The narrower case the numbers support: a single full picture of a calm scene, for the postcard and slideshow (ROADMAP.md 7.6, stage 6d), exact in 0.3 to 0.6 kB where the phone made 0.9 to 1.5 kB. That can be decided at stage 6d, after a check on real pictures from the phone.
+
+**Next.** D8 is the owner's. Not started and not depending on it: stage 6b (free legibility and face crop work before the coder, whichever it is), stage 1 (one repository; first step on the stronger model), stage 3 (sound; needs the owner's test clips for Polish). The owner's phone tests below are still open (how DRED and RADE sound, the test clip, two phones, a radio).
 
 **Review and big plan for both apps: [ROADMAP.md](ROADMAP.md)** (2026-11-15). The owner's decisions are in its section 2: D2 to D10 as recommended; **D1 was decided on 2026-11-16: one repository.** Stage 1 may move files; its first step needs the stronger model.
 
@@ -43,7 +56,7 @@ Not done in stage 0: the self-test does not play RADE through the speaker and li
 
 Fix what the first report shows (stage 2 of the older roadmap below, and the 2.7 and 2.8 phone lists) before building features on it. If the report shows TOO SLOW or TIGHT for something, that decides the next work.
 
-**Waiting for the owner: phone test of 2.8** (now `dist/Codec2Recorder-2.8.1.apk`, which is 2.8 plus the TEST tab; installs over 2.7). 2.8 adds RADE voice messages (stage 8, built 2026-11-15) to the DRED recordings of 2.7. Nothing that touches Android audio has run on a phone: recording, playback, saving WAV, compressing files, radio sending, and all of RADE.
+**Waiting for the owner: phone test of 2.8** (now `dist/Codec2Recorder-2.8.2.apk`, which is 2.8 plus the TEST tab; installs over 2.7). 2.8 adds RADE voice messages (stage 8, built 2026-11-15) to the DRED recordings of 2.7. Nothing that touches Android audio has run on a phone: recording, playback, saving WAV, compressing files, radio sending, and all of RADE.
 
 RADE phone test (stage 8):
 

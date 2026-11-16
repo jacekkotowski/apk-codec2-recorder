@@ -25,6 +25,7 @@ Each has my recommendation first. The plan in section 9 assumes the recommendati
 
 - **D2 to D10: the recommendations in the table are decided.** D6 still needs a name from the owner and blocks nothing.
 - **D1 decided 2026-11-16: one repository**, in `apk-codec2-recorder`, as recommended in the table below. Stage 1 may move files. Per section 9.1 its first step (reference outputs in `tests/golden/`, the folder layout, the interfaces between layers) needs the stronger model; Sonnet does the moving and reformatting under those tests. Both package names and both signing keys stay.
+- **Stage 6a measured 2026-11-16: by the rule, the picture coder should not be built as the video coder; D8 waits for the owner.** Result in section 7.4 and in `PLAN.md` "Start here".
 - **Stage 0 built 2026-11-15** on Sonnet 5.5, in both repositories (2.8.1 and 0.15.1); waiting for the owner's run on a phone. Record: `PLAN.md` "Start here". The shared voice-speed code is copied into FlatRaster (`src/pl/dyktafon/SelfTest.java`, identical but public), so stage 1 must merge the two copies.
 
 | # | Decision | Recommendation | Why |
@@ -36,7 +37,7 @@ Each has my recommendation first. The plan in section 9 assumes the recommendati
 | D5 | Which phones to build for | **Drop the x86_64 library from the released APK** (only emulators use it; about a third of the 14 MB). Keep 32-bit ARM until the self-test shows its speed | Slimmer download |
 | D6 | The app's name | Decide a name without "Codec2" in it (it records no Codec 2). Package `pl.dyktafon` stays | Already open as stage 10 |
 | D7 | Old `.c2` handling | **Remove the special rows and the "open it in 2.6" messages** one version from now | The owner said old recordings don't matter; it is the most visible obsolete text |
-| D8 | FlatRaster's own picture coder | **Measure it on a computer first** (stage 6a), build only if it clearly beats AV1 at these sizes | It is the largest single piece of new work |
+| D8 | FlatRaster's own picture coder | **Measure it on a computer first** (stage 6a), build only if it clearly beats AV1 at these sizes. **Measured 2026-11-16 (section 7.4): it does not. Recommendation: do not build it as the video coder. Waits for the owner** | It is the largest single piece of new work |
 | D9 | Neural video (person cut-out, pose "puppet") | **Not now.** Do the free steps first; then person cut-out as the first neural step; the puppet as an experiment on a computer | Section 7 |
 | D10 | Call sign | Add a call sign setting, sent as plain text in every data transmission and optionally as Morse | Licence rules; also tells the receiver who is sending |
 
@@ -270,6 +271,13 @@ MP4 export stays: the app draws the decoded pictures and gives them to the phone
 
 Stage 6a is the test: take the existing posterized test clips, code them with a prototype in Python, and compare with the AV1 figures already in the plan. Decide then (D8).
 
+**Measured 2026-11-16** (prototype `tools/coder/flatcoder.py` in `apk-codec2flatraster`; table and limits in that repository's `PLAN.md`, "Stage 6a"). Rule set beforehand: build only for about half the bytes, or fewer, on both full and delta pictures across the clips.
+
+- Full picture, 320x240 in 8 colours, coded exactly: 0.3 to 1.4 kB over five synthetic scenes (the estimate above said 0.8 to 1.5). On the phone self-test scene 290 bytes, against 900 to 1500 from the phone's encoders and 493 to 907 from AV1, HEVC and H.264 on a computer; on the other scenes 0.55 to 1.85 times the computer encoders.
+- Delta picture of a still scene: 1 byte. Of a moving scene: 145 to 828 bytes, 1.2 to 3.9 times the computer encoders, level with the phone's H.264. An exact coder pays for every border pixel that moved; a video encoder shifts blocks and may be slightly wrong.
+- 30 s of the self-test scene: prototype 9.1 kB, phone 11.9 to 18.2 kB, computer encoders 5.8 to 7.9 kB. So this coder does not remove the case for a bundled software AV1 encoder, as the paragraph above hoped: on moving pictures a computer AV1 encoder needs fewer bytes.
+- The rule is not met. Recommendation: do not build it as the video coder. Its full-picture half remains a candidate for the single pictures of 7.6 (postcard, slideshow), to be decided at stage 6d after a check on real pictures.
+
 ### 7.5 Neural networks: an honest ranking
 
 | Option | Bytes | Added to the app (to verify) | What is gained | What is lost | Verdict |
@@ -325,7 +333,7 @@ Each stage ends with something that can be checked. "Computer" means no phone is
 | 3 | **Sound**: the measuring rig with word counts and the owner's clips; the Natural profile; listener-side processing and playback speed; candidates of 5.4 one by one | A table: every profile and candidate, clean and noisy, Polish and English, STOI and wrong words. The owner's listening page. D3 decided and the confirmed settings written into `CLAUDE.md` | Computer, then the owner's ears | Stronger model |
 | 4 | **Interface**: Record, Send, Receive; presets and stages in signal order; help sheets; TRY; prices; obsolete text removed | The page tests pass against the new bridge; the owner can do each task without reading a paragraph | Computer, then phone | Sonnet |
 | 5 | **Radio by hand**: LISTEN for all modes, link check, manual keying and overs, call sign, text, position, picture to fit, "need N more"; SSB, FM and CB channel models | Every payload passes the new channel models at the speeds the tables name; a text passes at the very robust speed in under a minute | Computer, then two phones, then radios | Stronger model for the channel models, LISTEN for all modes and "need N more"; Sonnet for text, call sign, keying, overs and the page |
-| 6a | **Picture coder measurement** | A table: prototype coder against AV1 on the existing clips. D8 decided | Computer | Stronger model |
+| 6a | **Picture coder measurement** | A table: prototype coder against AV1 on the existing clips. D8 decided. **State 2026-11-16: measured; the prototype does not meet the rule (section 7.4). D8 waits for the owner** | Computer | Stronger model |
 | 6b | **Free legibility** (7.2) and face crop, eye hold, sketch (7.3) | Each step has a before-and-after figure for bytes and for border quality, as FlatRaster's tests already produce | Computer, then phone | Stronger model |
 | 6c | **The coder in the app**, still background, `.frv` version 3 with short packet headers (old files still play) | A 30 s recording is under half its present size at equal legibility | Computer, then phone | Stronger model |
 | 6d | **Postcard, slideshow, document** over the radio link from the shared core | A postcard passes phone to phone at the robust speed in under 2 minutes | Two phones | Sonnet |
