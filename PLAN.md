@@ -4,7 +4,7 @@ Last updated: 2026-11-15 (stage 0 of ROADMAP.md built: self-test, 2.8.1)
 
 ## Start here
 
-**Review and big plan for both apps: [ROADMAP.md](ROADMAP.md)** (2026-11-15). The owner's decisions are in its section 2: D2 to D10 as recommended; **D1 (one repository or two) is still open**, because the owner's message gave both options. Ask once, at the start of the session that begins stage 1, and move no file before the answer.
+**Review and big plan for both apps: [ROADMAP.md](ROADMAP.md)** (2026-11-15). The owner's decisions are in its section 2: D2 to D10 as recommended; **D1 was decided on 2026-11-16: one repository.** Stage 1 may move files; its first step needs the stronger model.
 
 **Stage 0 of ROADMAP.md is built (2026-11-15, on Sonnet 5.5): the self-test, in both apps.** Codec2 Recorder 2.8.1 (`dist/Codec2Recorder-2.8.1.apk`, installs over 2.8; the 2.8 APK is gone from `dist/`) has a new TEST tab; FlatRaster 0.15.1 (`apk-codec2flatraster`) has a Self-test panel. Both are the previous version plus the test, nothing else changed. **Next step is the owner's: run it once on the phone and paste the report.**
 
