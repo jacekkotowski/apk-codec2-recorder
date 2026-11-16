@@ -1,8 +1,20 @@
 # Codec2 Recorder plan
 
-Last updated: 2026-11-16 (stage 6a of ROADMAP.md measured: the picture coder; no change to either app)
+Last updated: 2026-11-16 (FlatRaster 0.16: first part of stage 6b; stage 6a measured earlier the same day)
 
 ## Start here
+
+## FlatRaster 0.16: first part of stage 6b (2026-11-16)
+
+The owner asked for a better picture and better picture compression. Done on the stronger model, in `apk-codec2flatraster` (its `PLAN.md` "Start here" and "0.16" have the tables); `dist/FlatRaster-0.16.apk` there. Built and tested on a computer; **not run on a phone.** Codec2 Recorder is unchanged.
+
+- **The camera's frames between two pictures are joined into the picture** (sharpest frame, averaging within the measured noise). Self-test scene: borders 3 to 12% shorter and 1 to 16% fewer bytes depending on noise; with a shaken hand 42% fewer bytes.
+- **The screen shows the picture enlarged with smooth borders** instead of blocks, live and when playing. Display only. The face is 9 to 21% nearer the truth.
+- **Border rounding is left out at 160 x 120**, where it wiped out eyes and mouths.
+- **Measured: 160 x 120 needs 45 to 55% fewer bytes than 320 x 240**, and shown smooth it reads nearly as well as 320 x 240 did as blocks. This is the compression gain of the session: not a new coder, a smaller picture made acceptable. The default size is not changed.
+- Tried and dropped: "faces first" in the palette (ROADMAP.md 7.2), no gain on the test scene.
+- Left of stage 6b: local contrast in the face box, grey palette, crop to the face, eye hold, sketch mode, still background.
+- **Next for the owner:** the four things to look at on the phone, in FlatRaster's `PLAN.md` "Start here". D8 still waits.
 
 ## Stage 6a result: the picture coder measurement (2026-11-16)
 
