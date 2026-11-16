@@ -1,6 +1,6 @@
 # Codec2 Recorder
 
-Offline Android dictaphone and radio voice tool. Package `pl.dyktafon`, current version **2.8.1**.
+Offline Android dictaphone and radio voice tool. Package `pl.dyktafon`, current version **2.8.2**.
 
 - **Record** speech at 2 to 10 kB per minute. From 2.7 the coder is DRED, the neural speech coder inside the Opus library; up to 2.6 it was Codec 2. Voice chain: rumble cut, denoiser with noise sample, gate, treble and consonant lift, leveler, compressor, look-ahead limiter. It also compresses existing audio files.
 - **Send files through an SSB radio by sound alone.** The phone's speaker plays into the radio's microphone; on the other side a phone's microphone listens to the radio's speaker. Recordings, text, small pictures, anything up to 100 kB. FreeDV data modes with LDPC error correction, plus repair frames so a one-way broadcast survives lost frames.
@@ -29,7 +29,7 @@ Recording settings were confirmed on the owner's phone in 2.4, for Codec 2. **DR
 
 ## Download
 
-[`dist/Codec2Recorder-2.8.1.apk`](dist/Codec2Recorder-2.8.1.apk), signed with the project key, installs over 2.6 and earlier. 2.8.1 is 2.8 with a TEST tab (self-test and test clip) added; nothing else changed. Android will ask to allow installing from this source.
+[`dist/Codec2Recorder-2.8.2.apk`](dist/Codec2Recorder-2.8.2.apk), signed with the project key, installs over 2.6 and earlier. 2.8.2 is 2.8 with a TEST tab (self-test and test clip) added; nothing else changed. Android will ask to allow installing from this source.
 
 Old `.c2` recordings don't play in 2.7. To keep one, save it as WAV in 2.6 before upgrading: [2.6 APK](https://github.com/jacekkotowski/apk-codec2-recorder/raw/16231bd/dist/Codec2Recorder-2.6.apk).
 
