@@ -1,8 +1,20 @@
 # Codec2 Recorder plan
 
-Last updated: 2026-11-16 (FlatRaster 0.16: first part of stage 6b; stage 6a measured earlier the same day)
+Last updated: 2026-11-17 (FlatRaster 0.17: second part of stage 6b)
 
 ## Start here
+
+## FlatRaster 0.17: hold the face still (2026-11-17)
+
+The owner asked for a smaller face box and for ways to cut bits while keeping the picture legible, then for the plan and for two of the ideas (hold the face still, flat background) to be done. Done in `apk-codec2flatraster` (its `PLAN.md` "Start here" and "0.17" have the plan, tables and the phone check list); `dist/FlatRaster-0.17.apk` there. Built and tested on a computer, **not run on a phone**. Codec2 Recorder is unchanged. Sessions on Sonnet 5.5 (the owner chose it; ROADMAP.md 9.1 names the stronger model for stage 6b, but the work was a scripted measurement guarded by tests).
+
+- **Result:** with a face-box setting and a follower that looks at the picture (the camera's face rectangle trembles), a talking head needs 33 to 48% fewer bytes with the exact coder, 7 to 34% with x264 and 10 to 29% with svt-av1 on the made-up scene (head box to face-only box). Pixels changed per picture 46 to 87% fewer. Mouth movement still followable, eyes more visible. Off by default.
+- **Each half alone loses**, and the **Faces setting of 0.15 costs bytes** (+11 to +26%) because its box follows the detector's trembling. Recommendation: use Hold face still instead of Faces. Not changed without the phone.
+- **Video encoders gain far less than the exact coder** (they already follow a moving head by moving blocks). D8 unchanged.
+- **For a stronger-model session:** judge the follower's failure modes on real faces (turning, nodding, glasses, a hand across the face, two faces) and decide the defaults after the phone test; the follower is the one piece of new algorithm that a plausible but wrong result could hide in.
+- **Next for the owner:** the four things to look at on the phone, in FlatRaster's `PLAN.md` "Start here". D8 still waits.
+
+(Earlier the same week:)
 
 ## FlatRaster 0.16: first part of stage 6b (2026-11-16)
 
